@@ -16,12 +16,12 @@ def parse_html_references(content):
     
     for match in re.finditer(href_pattern, content):
         url = match.group(1).strip()
-        if url and not url.startswith(ignored_schemes):
+        if url and not url.startswith(ignored_schemes) and '${' not in url:
             refs.append(('href', url))
             
     for match in re.finditer(src_pattern, content):
         url = match.group(1).strip()
-        if url and not url.startswith(ignored_schemes):
+        if url and not url.startswith(ignored_schemes) and '${' not in url:
             refs.append(('src', url))
             
     return refs
@@ -30,7 +30,7 @@ def main():
     root_dir = os.path.abspath(os.path.dirname(__file__))
     html_files = []
     for dirpath, _, filenames in os.walk(root_dir):
-        if any(p in dirpath for p in ['.git', '.github', '.githooks']):
+        if any(p in dirpath for p in ['.git', '.github', '.githooks', '.venv', 'node_modules', '.pytest_cache']):
             continue
         for f in filenames:
             if f.endswith('.html'):
@@ -45,7 +45,7 @@ def main():
         rel_file_path = os.path.relpath(file_path, root_dir)
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                 content = f.read()
         except Exception as e:
             print(f"Error reading {rel_file_path}: {e}")
@@ -73,7 +73,7 @@ def main():
     for file_path in html_files:
         rel_file_path = os.path.relpath(file_path, root_dir)
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                 content = f.read()
         except:
             continue

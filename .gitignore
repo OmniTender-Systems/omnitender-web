@@ -10,3 +10,15 @@
 # generated, deploy-time Supabase config (real publishable key injected at deploy)
 # never commit the generated artifact — only config.example.js is tracked
 config.js
+
+# Python cache & test artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+node_modules/
+
+# Local SQLite databases & sync logs
+data/*.db
+data/*.json
+data/*.log

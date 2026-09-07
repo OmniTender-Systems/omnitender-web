@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application source code
 COPY backend/ /app/backend/
 COPY estimator.html /app/
+COPY rfp-search.html /app/
 COPY logo.svg /app/
 COPY style.css /app/
 

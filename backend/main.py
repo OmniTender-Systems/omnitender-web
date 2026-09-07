@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from contextlib import asynccontextmanager
 from backend.pricing_db import (
     get_all_pricing_items,
     calculate_takeoff_materials,
@@ -20,11 +21,21 @@ from backend.pricing_db import (
 from backend.blueprint_parser import parse_blueprint_file
 from backend.gemini_analyzer import analyze_blueprint_materials_with_gemini
 from backend.export_service import generate_takeoff_csv
+from backend.bid_scraper.api import router as bids_router
+from backend.bid_scraper.db import init_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
 
 app = FastAPI(
     title="OmniSubEstimator API",
     description="AI Blueprint Parser & Material Takeoff Engine API for Subcontractors",
     version="0.2.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -34,6 +45,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(bids_router)
 
 
 class MaterialItem(BaseModel):
@@ -145,6 +158,18 @@ def get_style():
     if not os.path.exists(path):
         path = "style.css"
     return FileResponse(path, media_type="text/css")
+
+
+@app.get("/bids", response_class=FileResponse)
+@app.get("/rfp-search", response_class=FileResponse)
+def get_rfp_search_page():
+    """Serves the interactive OmniTender NC Municipal Bids & Proposals UI."""
+    path = os.path.join(ROOT_DIR, "rfp-search.html")
+    if not os.path.exists(path):
+        path = "rfp-search.html"
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="rfp-search.html not found")
+    return FileResponse(path, media_type="text/html")
 
 
 @app.post("/upload", response_model=TakeoffResponse)
