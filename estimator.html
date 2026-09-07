@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>OmniSubEstimator — AI Blueprint Parser & Material Takeoff Engine</title>
+  <meta name="description" content="Instant AI blueprint parser and automated material takeoff engine for commercial subcontractors. Upload PDFs, extract walls and rooms with computer vision, identify finishes with Gemini AI, and calculate RS Means estimates.">
+  <meta name="theme-color" content="#F7792C">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://omnitender.us/estimator.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23070707'/><text x='16' y='23' font-size='22' font-family='Arial,Helvetica,sans-serif' font-weight='bold' text-anchor='middle' fill='%23F7792C'>O</text></svg>">
+  <link rel="stylesheet" href="style.css?v=9">
+  <script src="site-config.js?v=ads1"></script>
+  <script src="google-analytics.js?v=ads1" defer></script>
+  <style>
+    :root {
+      --brand: #F7792C;
+      --bg: #070707;
+      --card-bg: #121212;
+      --border: #242424;
+      --text: #f0f0f0;
+      --text-muted: #999;
+      --accent-green: #2ecc71;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .estimator-hero {
+      text-align: center;
+      padding: 3.5rem 1.5rem 2rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .estimator-hero h1 {
+      font-size: 2.8rem;
+      line-height: 1.15;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+    .estimator-hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 780px;
+      margin: 0 auto 2rem;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: #241407;
+      color: var(--brand);
+      border: 1px solid #5a2c0a;
+      padding: 4px 14px;
+      border-radius: 999px;
+      margin-bottom: 1.25rem;
+    }
+    .app-container {
+      max-width: 1200px;
+      margin: 0 auto 4rem;
+      padding: 0 1.5rem;
+    }
+    .dropzone {
+      border: 2px dashed var(--border);
+      background: #111111;
+      border-radius: 12px;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--brand);
+      background: #191410;
+    }
+    .dropzone input[type="file"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .dropzone-icon {
+      font-size: 3rem;
+      margin-bottom: 0.75rem;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 860px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card h2, .card h3 {
+      margin-top: 0;
+      color: #fff;
+    }
+    .metric-pill {
+      background: #181818;
+      border: 1px solid #282828;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .metric-val {
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: var(--brand);
+    }
+    .metric-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+    table.takeoff-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+    }
+    table.takeoff-table th {
+      text-align: left;
+      background: #1a1a1a;
+      padding: 0.75rem 0.5rem;
+      color: #bbb;
+      border-bottom: 1px solid var(--border);
+    }
+    table.takeoff-table td {
+      padding: 0.75rem 0.5rem;
+      border-bottom: 1px solid #1f1f1f;
+    }
+    table.takeoff-table tr:hover td {
+      background: #161616;
+    }
+    .csi-badge {
+      background: #202020;
+      color: #aaa;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.8rem;
+    }
+    .btn-action {
+      background: var(--brand);
+      color: #000;
+      border: none;
+      font-weight: 700;
+      padding: 0.85rem 1.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: opacity 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+    .btn-action:hover {
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background: #242424;
+      color: #fff;
+      border: 1px solid #3a3a3a;
+      font-weight: 600;
+      padding: 0.85rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-secondary:hover {
+      background: #333333;
+    }
+    .slider-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .slider-row input[type="range"] {
+      width: 50%;
+      accent-color: var(--brand);
+    }
+    .blueprint-preview-box {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      text-align: center;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .blueprint-preview-box img {
+      max-width: 100%;
+      max-height: 550px;
+      object-fit: contain;
+    }
+    .spinner {
+      border: 4px solid #222;
+      border-top: 4px solid var(--brand);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 0.9s linear infinite;
+      margin: 1.5rem auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="index.html" style="display: inline-flex; align-items: center; gap: 12px; justify-content: center; text-decoration: none;">
+      <img src="logo.svg" alt="OmniTender Crest Logo" style="height: 38px; width: auto; vertical-align: middle;">
+      <span>Omni<span style="color: var(--brand);">Tender</span></span>
+    </a>
+    <nav style="margin-top: 0.75rem;">
+      <a href="index.html">Home</a>
+      <a href="merchants-nc.html">NC Merchants</a>
+      <a href="rfp-concierge.html">RFP Concierge</a>
+      <a href="estimator.html" style="color: var(--brand); font-weight: bold;">SubEstimator AI</a>
+      <a href="pos.html">POS Terminals</a>
+      <a href="apply.html">Apply Now</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="estimator-hero">
+      <div class="badge">Daystrom Spark #92 • OmniSubEstimator MVP</div>
+      <h1>AI Blueprint Parser & Material Takeoff Engine</h1>
+      <p>Turn architectural PDF floor plans into itemized subcontractor material takeoffs in under 30 seconds. Computer vision wall and room segmentation coupled with Google Gemini 2.5 vision intelligence and RS Means pricing.</p>
+    </section>
+
+    <div class="app-container">
+      <!-- UPLOAD & CONFIG CARD -->
+      <div class="card">
+        <div class="grid-2" style="align-items: center;">
+          <div>
+            <h2 style="font-size: 1.3rem;">1. Upload Blueprint Sheet</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+              Upload any commercial floor plan, tenant improvement plan, or architectural drawing (PDF, PNG, JPG).
+            </p>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: 0.85rem; color: #aaa; margin-bottom: 0.35rem;">Project Title</label>
+                <input type="text" id="projectTitleInput" value="Commercial Suite 300 Renovation" style="width: 100%; box-sizing: border-box; padding: 0.75rem; background: #1c1c1c; border: 1px solid #333; color: #fff; border-radius: 6px;">
+              </div>
+              <div style="width: 160px;">
+                <label style="display: block; font-size: 0.85rem; color: #aaa; margin-bottom: 0.35rem;">Finish Standard</label>
+                <select id="finishLevelSelect" style="width: 100%; box-sizing: border-box; padding: 0.75rem; background: #1c1c1c; border: 1px solid #333; color: #fff; border-radius: 6px;">
+                  <option value="standard" selected>Standard (1/2" Gypsum)</option>
+                  <option value="premium">Premium (5/8" Type X)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="dropzone" id="dropzone">
+              <input type="file" id="blueprintFileInput" accept=".pdf,.png,.jpg,.jpeg">
+              <div class="dropzone-icon">📐</div>
+              <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.35rem;" id="dropzoneLabel">Drop blueprint PDF or image here</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">Supports architectural PDF, PNG, JPG up to 50MB</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="loadingIndicator" style="display: none; text-align: center; padding: 2rem 0;">
+          <div class="spinner"></div>
+          <div style="font-size: 1.1rem; font-weight: 600;" id="loadingStatusText">Analyzing blueprint vectors and wall boundaries...</div>
+          <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">Extracting walls via OpenCV morphological kernels & inspecting materials with Gemini AI</div>
+        </div>
+      </div>
+
+      <!-- RESULTS DISPLAY -->
+      <div id="resultsSection" style="display: none;">
+        <!-- STATS BAR -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+          <div class="metric-pill">
+            <div class="metric-val" id="totalFloorAreaVal">0</div>
+            <div class="metric-label">Total Floor Area (sq ft)</div>
+          </div>
+          <div class="metric-pill">
+            <div class="metric-val" id="totalWallFtVal">0</div>
+            <div class="metric-label">Wall Linear Feet</div>
+          </div>
+          <div class="metric-pill">
+            <div class="metric-val" id="roomsCountVal">0</div>
+            <div class="metric-label">Rooms Identified</div>
+          </div>
+          <div class="metric-pill">
+            <div class="metric-val" id="scaleDetectedVal">1/4" = 1'-0"</div>
+            <div class="metric-label">Architectural Scale</div>
+          </div>
+          <div class="metric-pill">
+            <div class="metric-val" style="color: var(--accent-green);" id="materialSubtotalVal">$0.00</div>
+            <div class="metric-label">RS Means Material Cost</div>
+          </div>
+        </div>
+
+        <!-- BLUEPRINT PREVIEW & AI SPECIFICATIONS -->
+        <div class="grid-2">
+          <div class="card">
+            <h3>Vision Overlay: Wall & Room Boundaries</h3>
+            <div class="blueprint-preview-box" id="blueprintPreviewBox">
+              <img id="overlayImg" alt="Annotated Blueprint" src="">
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.8rem; color: #888;">
+              <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #F7792C; display: inline-block; border-radius: 2px;"></span> Detected Walls</span>
+              <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #2ecc71; display: inline-block; border-radius: 2px;"></span> Enclosed Rooms</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Gemini AI Trade & Finish Analysis</h3>
+            <div style="background: #161616; border-left: 4px solid var(--brand); padding: 1rem 1.25rem; border-radius: 0 8px 8px 0; margin-bottom: 1rem;">
+              <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--brand); font-weight: 700; margin-bottom: 0.25rem;" id="aiProjectType">Commercial Tenant Improvement</div>
+              <div style="font-weight: 600; font-size: 1rem;" id="aiWallSpecs">Partition framing and drywall specs loading...</div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <div style="font-size: 0.85rem; color: #aaa; font-weight: 600; margin-bottom: 0.25rem;">Flooring & Finishes</div>
+              <div style="font-size: 0.9rem; color: #ccc;" id="aiFlooringSpecs">—</div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <div style="font-size: 0.85rem; color: #aaa; font-weight: 600; margin-bottom: 0.25rem;">Ceilings & Acoustical</div>
+              <div style="font-size: 0.9rem; color: #ccc;" id="aiCeilingSpecs">—</div>
+            </div>
+
+            <div>
+              <div style="font-size: 0.85rem; color: #aaa; font-weight: 600; margin-bottom: 0.4rem;">Subcontractor Trade Divisions</div>
+              <div id="aiSubcontractorsList" style="display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAKEOFF TABLE & ESTIMATE CALCULATOR -->
+        <div class="grid-2">
+          <!-- TAKEOFF LINE ITEMS -->
+          <div class="card" style="overflow-x: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <h3 style="margin: 0;">Itemized Material Takeoff</h3>
+              <button class="btn-secondary" id="exportCsvBtn" style="padding: 0.4rem 0.85rem; font-size: 0.85rem;">
+                📥 Export CSV
+              </button>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0;">Priced against North Carolina regional RS Means construction cost databases.</p>
+            <table class="takeoff-table" id="takeoffTable">
+              <thead>
+                <tr>
+                  <th>CSI</th>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Unit</th>
+                  <th>Cost/Unit</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="takeoffTbody"></tbody>
+            </table>
+          </div>
+
+          <!-- SUBCONTRACTOR BID CALCULATOR -->
+          <div class="card">
+            <h3>Subcontractor Bid Quote Calculator</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Fine-tune your labor and overhead markups to produce a client-ready proposal.</p>
+
+            <div style="background: #171717; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #282828;">
+              <div class="slider-row">
+                <label>Labor Markup: <span id="laborRateLabel" style="font-weight: 700; color: #fff;">35%</span></label>
+                <input type="range" id="laborSlider" min="15" max="75" value="35">
+              </div>
+              <div class="slider-row">
+                <label>Overhead & Profit: <span id="opRateLabel" style="font-weight: 700; color: #fff;">15%</span></label>
+                <input type="range" id="opSlider" min="5" max="35" value="15">
+              </div>
+              <div class="slider-row" style="margin-bottom: 0;">
+                <label>Contingency / Waste: <span id="contingencyLabel" style="font-weight: 700; color: #fff;">5%</span></label>
+                <input type="range" id="contingencySlider" min="0" max="15" value="5">
+              </div>
+            </div>
+
+            <!-- QUOTE SUMMARY CARD -->
+            <div style="border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; background: #0e0e0e;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.95rem; color: #ccc;">
+                <span>Material Subtotal</span>
+                <span id="summaryMaterialVal">$0.00</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.95rem; color: #ccc;">
+                <span>Labor Cost</span>
+                <span id="summaryLaborVal">$0.00</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.95rem; color: #ccc;">
+                <span>Overhead & Profit</span>
+                <span id="summaryOpVal">$0.00</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.95rem; color: #ccc;">
+                <span>Contingency</span>
+                <span id="summaryContingencyVal">$0.00</span>
+              </div>
+              <hr style="border: none; border-top: 1px solid #282828; margin: 0.75rem 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 1.15rem; font-weight: 700;">Grand Total Quote</span>
+                <span style="font-size: 1.6rem; font-weight: 800; color: var(--brand);" id="summaryGrandTotalVal">$0.00</span>
+              </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+              <button class="btn-action" id="stripeUpgradeBtn" style="flex: 1; justify-content: center;">
+                🚀 Upgrade to Pro ($249/mo)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer style="text-align: center; padding: 3rem 1rem; border-top: 1px solid #1a1a1a; color: #777; font-size: 0.85rem;">
+    <p>© 2026 OmniTender Systems Inc. All rights reserved. • OmniSubEstimator AI</p>
+  </footer>
+
+  <script>
+    // State management
+    let currentTakeoff = null;
+    let currentEstimate = null;
+
+    // API URL resolver: checks relative path if served via HTTP/S, or localhost:8000 if opened via file:// or alternative dev server
+    const API_BASE = (window.location.protocol === "file:" || (window.location.hostname === "localhost" && window.location.port !== "8000" && window.location.port !== "8080")) ? "http://localhost:8000" : "";
+
+    const dropzone = document.getElementById("dropzone");
+    const fileInput = document.getElementById("blueprintFileInput");
+    const dropzoneLabel = document.getElementById("dropzoneLabel");
+    const loadingIndicator = document.getElementById("loadingIndicator");
+    const resultsSection = document.getElementById("resultsSection");
+
+    // Drag-and-drop event handlers
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+      }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length) {
+        handleFileSelected(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        handleFileSelected(e.target.files[0]);
+      }
+    });
+
+    async function handleFileSelected(file) {
+      dropzoneLabel.textContent = `Selected: ${file.name}`;
+      loadingIndicator.style.display = "block";
+      resultsSection.style.display = "none";
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("project_title", document.getElementById("projectTitleInput").value);
+      formData.append("finish_level", document.getElementById("finishLevelSelect").value);
+
+      try {
+        const res = await fetch(`${API_BASE}/upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || "Upload failed");
+        }
+
+        const takeoff = await res.json();
+        currentTakeoff = takeoff;
+        renderTakeoff(takeoff);
+        recalculateQuote();
+      } catch (err) {
+        alert("Error parsing blueprint: " + err.message);
+      } finally {
+        loadingIndicator.style.display = "none";
+      }
+    }
+
+    function renderTakeoff(takeoff) {
+      document.getElementById("totalFloorAreaVal").textContent = takeoff.total_floor_area_sqft.toLocaleString();
+      document.getElementById("totalWallFtVal").textContent = takeoff.total_wall_linear_ft.toLocaleString();
+      document.getElementById("roomsCountVal").textContent = takeoff.detected_rooms.length;
+      document.getElementById("scaleDetectedVal").textContent = takeoff.scale;
+      document.getElementById("materialSubtotalVal").textContent = `$${takeoff.total_estimated_cost.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+
+      if (takeoff.annotated_overlay_base64) {
+        document.getElementById("overlayImg").src = takeoff.annotated_overlay_base64;
+      }
+
+      if (takeoff.ai_analysis) {
+        const ai = takeoff.ai_analysis;
+        document.getElementById("aiProjectType").textContent = `${ai.project_type} • ${ai.finish_level.toUpperCase()} SPEC`;
+        document.getElementById("aiWallSpecs").textContent = ai.wall_specifications;
+        document.getElementById("aiFlooringSpecs").textContent = ai.flooring_specifications;
+        document.getElementById("aiCeilingSpecs").textContent = ai.ceiling_specifications;
+
+        const subsList = document.getElementById("aiSubcontractorsList");
+        subsList.innerHTML = "";
+        (ai.recommended_subcontractors || []).forEach(sub => {
+          const tag = document.createElement("span");
+          tag.className = "csi-badge";
+          tag.style.background = "#24180d";
+          tag.style.color = "var(--brand)";
+          tag.style.border = "1px solid #5a2c0a";
+          tag.textContent = sub;
+          subsList.appendChild(tag);
+        });
+      }
+
+      // Populate material rows
+      const tbody = document.getElementById("takeoffTbody");
+      tbody.innerHTML = "";
+      takeoff.materials.forEach(m => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span class="csi-badge">${m.csi_code || "09 00 00"}</span></td>
+          <td>
+            <div style="font-weight: 600;">${m.item_name}</div>
+            <div style="font-size: 0.75rem; color: #888;">${m.category}</div>
+          </td>
+          <td>${m.quantity}</td>
+          <td>${m.unit}</td>
+          <td>$${m.unit_cost_est.toFixed(2)}</td>
+          <td style="font-weight: 600;">$${m.total_cost_est.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      resultsSection.style.display = "block";
+    }
+
+    // Interactive slider updates
+    const laborSlider = document.getElementById("laborSlider");
+    const opSlider = document.getElementById("opSlider");
+    const contingencySlider = document.getElementById("contingencySlider");
+
+    laborSlider.addEventListener("input", (e) => {
+      document.getElementById("laborRateLabel").textContent = `${e.target.value}%`;
+      recalculateQuote();
+    });
+    opSlider.addEventListener("input", (e) => {
+      document.getElementById("opRateLabel").textContent = `${e.target.value}%`;
+      recalculateQuote();
+    });
+    contingencySlider.addEventListener("input", (e) => {
+      document.getElementById("contingencyLabel").textContent = `${e.target.value}%`;
+      recalculateQuote();
+    });
+
+    async function recalculateQuote() {
+      if (!currentTakeoff) return;
+
+      const laborRate = parseFloat(laborSlider.value) / 100.0;
+      const opRate = parseFloat(opSlider.value) / 100.0;
+      const contingencyRate = parseFloat(contingencySlider.value) / 100.0;
+
+      try {
+        const res = await fetch(`${API_BASE}/estimate`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            takeoff_data: currentTakeoff,
+            pricing_tier: "standard",
+            labor_rate_multiplier: laborRate,
+            overhead_profit_multiplier: opRate,
+            contingency_multiplier: contingencyRate,
+          }),
+        });
+
+        if (res.ok) {
+          const est = await res.json();
+          currentEstimate = est;
+          document.getElementById("summaryMaterialVal").textContent = `$${est.material_subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+          document.getElementById("summaryLaborVal").textContent = `$${est.labor_estimate.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+          document.getElementById("summaryOpVal").textContent = `$${est.overhead_and_profit.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+          document.getElementById("summaryContingencyVal").textContent = `$${est.contingency.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+          document.getElementById("summaryGrandTotalVal").textContent = `$${est.grand_total.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        }
+      } catch (err) {
+        console.error("Quote recalculation error:", err);
+      }
+    }
+
+    // CSV Export trigger
+    document.getElementById("exportCsvBtn").addEventListener("click", async () => {
+      if (!currentTakeoff) return;
+      try {
+        const res = await fetch(`${API_BASE}/export/csv`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            takeoff_data: currentTakeoff,
+            estimate_data: currentEstimate,
+          }),
+        });
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${currentTakeoff.filename || "takeoff"}_estimate.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (err) {
+        alert("Export failed: " + err.message);
+      }
+    });
+
+    // Stripe checkout upgrade
+    document.getElementById("stripeUpgradeBtn").addEventListener("click", async () => {
+      try {
+        const res = await fetch(`${API_BASE}/stripe/create-checkout-session`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({plan_tier: "pro"}),
+        });
+        const data = await res.json();
+        if (data.checkout_url) {
+          alert(`Checkout session created for OmniSubEstimator Pro!\nRedirecting to: ${data.checkout_url}`);
+          window.location.href = data.checkout_url;
+        }
+      } catch (err) {
+        alert("Checkout initialization failed: " + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
