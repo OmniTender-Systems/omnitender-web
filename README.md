@@ -6,6 +6,7 @@ OmniTender's public marketing site — a small, dependency-free static site:
 |------|---------|
 | `index.html` | SMS text-alert opt-in (consent form for the OmniTender Alerts program) |
 | `apply.html` | Merchant application (credit, debit, digital/crypto, EBT/SNAP) |
+| `community.html` | Public Community forum for customers/vendors (Supabase-backed — see below) |
 | `privacy.html` | Privacy Policy for the SMS program |
 | `terms.html` | SMS Terms & Conditions |
 | `404.html` | Branded not-found page (see deploy note below to wire it up) |
@@ -32,6 +33,33 @@ Forms are progressively enhanced with JavaScript: inline validation, a disabled
 panel (`role="alert"`) that surfaces the support email/phone if the request fails —
 the user is never left without a next step. (Submission requires JavaScript; there
 is no server-side form fallback because the backend expects JSON.)
+
+## Community forum
+
+`community.html` / `community-forum.js` is the one page on this site that isn't
+purely static — it talks directly to **Supabase** (client-side, via
+`supabaseClient.js` and the config injected at deploy time; see
+`config.example.js`) for passwordless email sign-in and for posts/comments.
+There is no new backend service: every access rule (who can read what, who can
+post, who can moderate) lives in Postgres Row Level Security + triggers in
+[`supabase/community_schema.sql`](supabase/community_schema.sql), not in this
+repo's JS.
+
+- New posts are held as `pending` and are **not publicly visible** until a
+  moderator approves them. Comments are visible immediately once posted, but
+  only underneath an already-approved post.
+- A moderator is any user with a row in the `forum_admins` table — there is no
+  in-app way to grant that; the Owner adds one by running SQL directly (see the
+  comment at the bottom of the schema file).
+- **One-time setup before this can go live:** run `supabase/community_schema.sql`
+  once against the Supabase project referenced by the `SUPABASE_URL` /
+  `SUPABASE_PUBLISHABLE_KEY` deploy secrets (a staging project first, per the
+  warning at the top of that file — it has not been verified against a live
+  project). Until it's run, the page loads but every read/write fails closed
+  (Supabase returns a table-not-found/permission error, not a silent bypass).
+- This is a new authenticated/public-write surface, which `GOVERNANCE.md`
+  requires a recorded S-4 red-team pass for before merge — that has not
+  happened yet for this feature; see the PR.
 
 ## Accessibility
 
