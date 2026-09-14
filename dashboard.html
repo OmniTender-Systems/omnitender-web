@@ -996,6 +996,7 @@
             <button data-v="ledger">💵 Ledger <span class="nav-preview-tag">Example</span></button>
             <button data-v="pipeline">📈 Pipeline</button>
             <button data-v="workboard">🗂️ Workboard</button>
+            <button data-v="community">🗣️ Community</button>
             <button data-v="mail">✉️ Your mail</button>
             <button data-v="leads">👥 Leads</button>
             <button data-v="feedback">💬 Feedback</button>
@@ -1586,7 +1587,16 @@
             </div>
             <div id="workboard-root"></div>
           </section>
-          
+
+          <!-- COMMUNITY VIEW — internal staff discussion board -->
+          <section id="v-community" class="view">
+            <div class="card" style="border-color: var(--accent); margin-bottom: 12px;">
+              <h2 style="margin: 0 0 6px; border-left: 3px solid var(--accent); padding-left: 10px;">🗣️ OmniTender Community</h2>
+              <p style="font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5;">Ask questions, share updates, and discuss anything related to the company with the rest of the team. Announcements are posted by Admin/Owner; anyone can start a General or Question thread.</p>
+            </div>
+            <div id="community-root"></div>
+          </section>
+
         </main>
         
         <footer>
@@ -1654,5 +1664,6 @@
   <script src="dashboard.js?v=43"></script>
   <script src="feedback.js?v=2"></script>
   <script src="workboard.js?v=1"></script>
+  <script src="community.js?v=1"></script>
 </body>
 </html>
