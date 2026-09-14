@@ -218,9 +218,12 @@ create policy forum_posts_update on public.forum_posts for update
 drop policy if exists forum_comments_select on public.forum_comments;
 create policy forum_comments_select on public.forum_comments for select
   using (
-    exists (
-      select 1 from public.forum_posts p
-      where p.id = post_id and p.status = 'approved' and p.deleted = false
+    (
+      deleted = false
+      and exists (
+        select 1 from public.forum_posts p
+        where p.id = post_id and p.status = 'approved' and p.deleted = false
+      )
     )
     or auth.uid() = user_id
     or public.is_forum_admin(auth.uid())
