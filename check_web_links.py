@@ -13,15 +13,20 @@ def parse_html_references(content):
     
     # Non-file URI schemes to ignore
     ignored_schemes = ('http://', 'https://', 'mailto:', 'tel:', 'sms:', 'data:', 'javascript:', '#')
+
+    # Files that are deliberately gitignored and rendered only at deploy time
+    # from a committed .example template (see config.example.js) — not broken
+    # references, just absent in a local/CI checkout.
+    ignored_targets = {'config.js'}
     
     for match in re.finditer(href_pattern, content):
         url = match.group(1).strip()
-        if url and not url.startswith(ignored_schemes):
+        if url and not url.startswith(ignored_schemes) and url not in ignored_targets:
             refs.append(('href', url))
-            
+
     for match in re.finditer(src_pattern, content):
         url = match.group(1).strip()
-        if url and not url.startswith(ignored_schemes):
+        if url and not url.startswith(ignored_schemes) and url not in ignored_targets:
             refs.append(('src', url))
             
     return refs
