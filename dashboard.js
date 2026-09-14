@@ -315,6 +315,7 @@
     ledger: loadLedger,
     pipeline: loadPipeline,
     workboard: loadWorkboard,
+    community: loadCommunity,
     mail: loadMail,
     training: loadTraining,
     leads: loadLeads,
@@ -348,6 +349,10 @@
 
   function loadWorkboard() {
     if (window.OmniTenderWorkboard) window.OmniTenderWorkboard.init();
+  }
+
+  function loadCommunity() {
+    if (window.OmniTenderCommunity) window.OmniTenderCommunity.init();
   }
 
   function loadTraining() {
