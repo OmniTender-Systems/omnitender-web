@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cetacea - The Leviathan's Lullaby</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #000510; color: #00ffcc; font-family: 'Segoe UI', monospace; overflow: hidden; height: 100vh; width: 100vw; user-select: none; }
+        #ocean-canvas { display: block; width: 100vw; height: 100vh; background: #000510; }
+        
+        .hud-panel {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0, 15, 30, 0.92);
+            border: 1px solid #00ffcc; border-radius: 8px;
+            padding: 16px; width: 300px; z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.25);
+            backdrop-filter: blur(4px);
+        }
+        .hud-title { font-size: 14px; font-weight: 700; color: #38bdf8; margin-bottom: 12px; border-bottom: 1px solid #005572; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .hud-row { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; }
+        .hud-value { font-weight: 700; color: #fff; }
+        .meter-bar { width: 100%; height: 6px; background: #002244; border-radius: 3px; margin-top: 3px; overflow: hidden; }
+        .meter-fill { height: 100%; background: #00ffcc; width: 0%; transition: width 0.1s ease; }
+        .duet-timer-bar { width: 100%; height: 4px; background: #002244; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+        .duet-timer-fill { height: 100%; background: #fbbf24; width: 0%; transition: width 0.1s linear; }
+        .rhythm-beats { display: flex; gap: 4px; margin-top: 6px; justify-content: center; }
+        .beat-dot { width: 8px; height: 8px; border-radius: 50%; background: #003355; border: 1px solid #00ffcc; transition: all 0.2s; }
+        .beat-dot.active { background: #fbbf24; box-shadow: 0 0 8px #fbbf24; }
+        
+        /* Audio Controls in HUD */
+        .audio-hud-controls {
+            margin-top: 10px; padding-top: 8px; border-top: 1px dashed #005572;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px;
+        }
+        .audio-btn {
+            background: rgba(0, 50, 80, 0.6); border: 1px solid #00ffcc; color: #00ffcc;
+            padding: 4px 8px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 10px;
+            transition: all 0.2s;
+        }
+        .audio-btn:hover { background: #00ffcc; color: #000510; box-shadow: 0 0 8px #00ffcc; }
+        .volume-slider {
+            width: 90px; accent-color: #00ffcc; cursor: pointer;
+        }
+
+        #radar-panel {
+            position: absolute; top: 20px; right: 20px;
+            width: 140px; height: 140px; border-radius: 50%;
+            background: rgba(0, 15, 30, 0.9); border: 2px solid #00ffcc;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3); z-index: 100;
+            overflow: hidden; backdrop-filter: blur(4px);
+        }
+        #radar-canvas { width: 100%; height: 100%; display: block; }
+
+        /* Modal Overlay Screens Base */
+        .overlay-screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 5, 16, 0.88); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 500; color: #00ffcc; text-align: center; padding: 20px;
+        }
+        .overlay-card {
+            background: rgba(0, 15, 30, 0.95); border: 2px solid #00ffcc; border-radius: 12px;
+            padding: 28px 36px; max-width: 580px; width: 90%; box-shadow: 0 0 40px rgba(0, 255, 204, 0.35);
+        }
+        .overlay-title { font-size: 24px; color: #38bdf8; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .overlay-subtitle { font-size: 13px; color: #cbd5e1; margin-bottom: 20px; line-height: 1.5; }
+        
+        .stat-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0; text-align: left;
+        }
+        .stat-box {
+            background: rgba(0, 30, 60, 0.6); border: 1px solid #005572; border-radius: 6px; padding: 10px 14px;
+        }
+        .stat-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; }
+        .stat-val { font-size: 16px; font-weight: 700; color: #00ffcc; margin-top: 2px; }
+        
+        .ui-btn {
+            background: rgba(0, 255, 204, 0.15); border: 2px solid #00ffcc; color: #00ffcc;
+            font-family: inherit; font-size: 14px; font-weight: 700; padding: 12px 28px;
+            border-radius: 6px; cursor: pointer; transition: all 0.2s; margin: 6px; display: inline-block;
+        }
+        .ui-btn:hover {
+            background: #00ffcc; color: #000510; box-shadow: 0 0 20px #00ffcc; transform: translateY(-2px);
+        }
+        .ui-btn.secondary {
+            border-color: #38bdf8; color: #38bdf8; background: rgba(56, 189, 248, 0.1);
+        }
+        .ui-btn.secondary:hover {
+            background: #38bdf8; color: #000510; box-shadow: 0 0 20px #38bdf8;
+        }
+
+        #tutorial {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 15, 30, 0.95); border: 2px solid #00ffcc; border-radius: 12px;
+            padding: 24px 32px; max-width: 600px; width: 90%; text-align: center; color: #00ffcc;
+            box-shadow: 0 0 35px rgba(0, 255, 204, 0.3); z-index: 400; backdrop-filter: blur(8px);
+        }
+
+        .high-score-table {
+            width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; text-align: left;
+        }
+        .high-score-table th { color: #38bdf8; border-bottom: 1px solid #005572; padding: 4px 6px; }
+        .high-score-table td { color: #e2e8f0; padding: 4px 6px; border-bottom: 1px solid rgba(0, 85, 114, 0.3); }
+
+        .hidden { display: none !important; }
+        /* Seashell Puppet Show Prologue Cutscene */
+        .cutscene-screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, #001f3f 0%, #000510 90%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 600; color: #fef08a; font-family: 'Georgia', serif; text-align: center; padding: 20px;
+        }
+        .shell-frame {
+            border: 4px double #eab308; border-radius: 20px; padding: 24px 36px;
+            background: rgba(10, 25, 45, 0.96); box-shadow: 0 0 50px rgba(234, 179, 8, 0.3);
+            max-width: 680px; width: 92%; position: relative; overflow: hidden;
+        }
+        .shell-title {
+            font-size: 26px; color: #fbbf24; font-family: 'Cinzel', serif; letter-spacing: 2px;
+            margin-bottom: 12px; text-transform: uppercase; text-shadow: 0 0 15px rgba(251, 191, 36, 0.6);
+        }
+        .puppet-canvas-container {
+            width: 100%; height: 220px; border: 2px solid #005572; border-radius: 12px;
+            background: #000c1e; margin: 14px 0; position: relative;
+        }
+        #puppet-canvas { width: 100%; height: 100%; display: block; }
+        .narrative-text {
+            font-size: 14px; line-height: 1.6; color: #cbd5e1; font-style: italic; min-height: 54px;
+        }
+
+        /* Ceremonial Rite Modal (Gatekeeping Tutorial Overlay) */
+        .rite-overlay {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 15, 35, 0.95); border: 2px solid #38bdf8; border-radius: 16px;
+            padding: 18px 28px; max-width: 580px; width: 90%; text-align: center; color: #00ffcc;
+            box-shadow: 0 0 35px rgba(56, 189, 248, 0.4); z-index: 550; backdrop-filter: blur(10px);
+        }
+        .rite-title { font-size: 16px; font-weight: 700; color: #fbbf24; letter-spacing: 1px; margin-bottom: 4px; }
+        .mother-dialogue {
+            font-family: 'Georgia', serif; font-style: italic; font-size: 12px; color: #e2e8f0;
+            background: rgba(0, 40, 80, 0.5); border-left: 4px solid #fbbf24; padding: 8px 12px;
+            margin: 6px 0; text-align: left; border-radius: 0 6px 6px 0;
+        }
+        .rite-counter {
+            font-size: 14px; font-weight: 800; color: #38bdf8; margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Radar & HUD -->
+    <div id="radar-panel"><canvas id="radar-canvas" width="140" height="140"></canvas></div>
+
+    <!-- Seashell Puppet Show Prologue Screen -->
+    <div id="prologue-screen" class="cutscene-screen">
+        <div class="shell-frame">
+            <div style="font-size: 11px; color: #eab308; letter-spacing: 3px; text-transform: uppercase;">PROLOGUE CUTSCENE</div>
+            <h1 class="shell-title">🐚 THE SONG OF MATRIARCH ELDER 🐚</h1>
+            <div class="puppet-canvas-container">
+                <canvas id="puppet-canvas" width="600" height="220"></canvas>
+            </div>
+            <p id="puppet-narrative" class="narrative-text">
+                "In the twilight of the ancient pelagic, before the abyssal trenches grew cold, the Great Matriarch pod sang the ancient codas..."
+            </p>
+            <div style="margin-top: 14px;">
+                <button id="btn-puppet-next" class="ui-btn" style="border-color: #eab308; color: #eab308;">CONTINUE SONG (1 / 3)</button>
+                <button id="btn-puppet-skip" class="ui-btn secondary" style="font-size: 11px; padding: 8px 16px;">SKIP PROLOGUE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ceremonial Mother's Rite Modal (Forces Completion Before Advancing) -->
+    <div id="rite-modal" class="rite-overlay hidden">
+        <div style="font-size: 10px; color: #fbbf24; font-weight: bold; letter-spacing: 2px;">🐋 RITE OF INITIATION</div>
+        <h3 id="rite-heading" class="rite-title">LESSON I: KINETIC MOMENTUM</h3>
+        <div id="mother-quote" class="mother-dialogue">
+            "My young calf, water is heavy like liquid stone. Feel your fluke push against the abyss..."
+        </div>
+        <div id="rite-task-desc" style="font-size: 12px; color: #00ffcc; margin: 6px 0;">
+            Task: Thrust forward 5 times using <b>[W / Up Arrow]</b>
+        </div>
+        <div id="rite-counter-display" class="rite-counter">PROGRESS: 0 / 5</div>
+        <div style="font-size: 10px; color: #94a3b8; font-style: italic;">(Perform the task in the ocean to satisfy Mother Elder)</div>
+    </div>
+
+    <div id="hud" class="hud-panel">
+        <div class="hud-title">
+            <span>🐋 CETACEA</span>
+            <span style="font-size: 10px; color: #94a3b8; font-weight: normal;">[ESC] Pause</span>
+        </div>
+        <div class="hud-row"><span>Depth</span><span class="hud-value" id="val-depth">150m</span></div>
+        <div class="meter-bar"><div class="meter-fill" id="fill-depth" style="width: 15%;"></div></div>
+        
+        <div class="hud-row"><span>Energy / Oxygen</span><span class="hud-value" id="val-energy">100%</span></div>
+        <div class="meter-bar"><div class="meter-fill" id="fill-energy" style="width: 100%; background: #38bdf8;"></div></div>
+        
+        <div class="hud-row"><span>Herded Squid</span><span class="hud-value" id="val-squid">0 / 5</span></div>
+        <div class="hud-row"><span>Lanternfish Devoured</span><span class="hud-value" id="val-fish" style="color:#00ffcc;">0</span></div>
+        <div class="hud-row"><span>Pod Alliance & Trust</span><span class="hud-value" id="val-trust">0%</span></div>
+        <div class="meter-bar"><div class="meter-fill" id="fill-trust" style="width: 0%; background: #fbbf24;"></div></div>
+
+        <div class="hud-row" style="margin-top:8px;"><span>Caverns & Echo Glyphs</span><span class="hud-value" id="val-caverns">0 / 4</span></div>
+        <div class="hud-row"><span>Survival Time</span><span class="hud-value" id="val-time">00:00</span></div>
+        <div class="hud-row"><span>Current Region</span><span class="hud-value" id="val-region" style="color:#38bdf8;">Sunlit Pelagic</span></div>
+        <div class="hud-row"><span>Depth Danger Level</span><span class="hud-value" id="val-danger" style="color:#4ade80;">LVL 1 - SAFE</span></div>
+        
+        <div class="duet-prompt" id="duet-box" style="margin-top:10px;">
+            <div style="font-size:10px; color:#cbd5e1;">LISTEN & ANSWER POD DUET</div>
+            <div class="duet-coda" id="duet-target">READY (Keys 1-4)</div>
+            <div class="duet-timer-bar"><div class="duet-timer-fill" id="duet-timer-fill"></div></div>
+            <div class="rhythm-beats" id="rhythm-beats-container">
+                <div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div>
+            </div>
+        </div>
+
+        <!-- Integrated HUD Audio Controls -->
+        <div class="audio-hud-controls">
+            <button id="hud-audio-toggle" class="audio-btn">🔊 Sound: ON</button>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: 9px; color: #94a3b8;">VOL</span>
+                <input type="range" id="hud-volume-slider" class="volume-slider" min="0" max="1" step="0.05" value="0.7">
+            </div>
+        </div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div id="pause-screen" class="overlay-screen hidden">
+        <div class="overlay-card">
+            <h2 class="overlay-title">PAUSED</h2>
+            <p class="overlay-subtitle">The ocean depth suspends its motion.</p>
+            <div style="margin-bottom: 20px;">
+                <button id="btn-resume" class="ui-btn">RESUME SWIM</button>
+                <button id="btn-restart-pause" class="ui-btn secondary">RESTART MISSION</button>
+                <button id="btn-quit-app" class="ui-btn secondary" style="border-color: #ef4444; color: #ef4444;">QUIT GAME</button>
+            </div>
+            <div class="audio-hud-controls" style="border-top: 1px solid #005572; padding-top: 12px;">
+                <button id="pause-audio-toggle" class="audio-btn" style="padding: 6px 12px; font-size: 12px;">🔊 Sound: ON</button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 11px; color: #cbd5e1;">Volume:</span>
+                    <input type="range" id="pause-volume-slider" class="volume-slider" style="width: 120px;" min="0" max="1" step="0.05" value="0.7">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="gameover-screen" class="overlay-screen hidden">
+        <div class="overlay-card" style="border-color: #ef4444; box-shadow: 0 0 40px rgba(239, 68, 68, 0.4);">
+            <h2 class="overlay-title" style="color: #ef4444;">ENERGY DEPLETED</h2>
+            <p class="overlay-subtitle">Your leviathan sank into the dark abyss. Oxygen reserves reached critical zero.</p>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Survival Time</div>
+                    <div class="stat-val" id="go-stat-time">00:00</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Squid Devoured</div>
+                    <div class="stat-val" id="go-stat-squid">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Pod Trust Achieved</div>
+                    <div class="stat-val" id="go-stat-trust">0%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Caverns Explored</div>
+                    <div class="stat-val" id="go-stat-caverns">0 / 4</div>
+                </div>
+            </div>
+            <button id="btn-respawn" class="ui-btn" style="border-color: #ef4444; color: #ef4444; background: rgba(239, 68, 68, 0.15);">RESPAWN / TRY AGAIN</button>
+        </div>
+    </div>
+
+    <!-- Victory Overlay Screen -->
+    <div id="victory-screen" class="overlay-screen hidden">
+        <div class="overlay-card" style="border-color: #fbbf24; box-shadow: 0 0 50px rgba(251, 191, 36, 0.5);">
+            <h1 class="overlay-title" style="color: #fbbf24;">🌊 LEVIATHAN APEX MASTER 🌊</h1>
+            <p class="overlay-subtitle">You have unified the pod clans, explored ancient abyssal caverns, unlocked echo glyphs, and mastered bubble-net herding!</p>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Final Survival Time</div>
+                    <div class="stat-val" id="vic-stat-time" style="color: #fbbf24;">00:00</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Squid Herded & Eaten</div>
+                    <div class="stat-val" id="vic-stat-squid" style="color: #fbbf24;">5 / 5</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Pod Alliance Trust</div>
+                    <div class="stat-val" id="vic-stat-trust" style="color: #fbbf24;">100%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Abyssal Caverns Discovered</div>
+                    <div class="stat-val" id="vic-stat-caverns" style="color: #fbbf24;">4 / 4</div>
+                </div>
+            </div>
+            <button id="btn-victory-restart" class="ui-btn" style="border-color: #fbbf24; color: #fbbf24; background: rgba(251, 191, 36, 0.2);">SWIM AGAIN</button>
+        </div>
+    </div>
+
+    <canvas id="ocean-canvas"></canvas>
+    <script src="cetacea_audio.js"></script>
+    <script>
+        const canvas = document.getElementById('ocean-canvas');
+        const ctx = canvas.getContext('2d');
+        let audioEngine = null;
+        
+        // Game States: 'TUTORIAL', 'PLAYING', 'PAUSED', 'GAMEOVER', 'VICTORY'
+        let gameState = 'TUTORIAL';
+        let survivalTimeSeconds = 0;
+        let survivalTimerInterval = null;
+        let audioMuted = false;
+        let currentVolume = 0.7;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // High Score Persistence & Retrieval
+        const HIGH_SCORE_KEY = 'cetacea_high_scores_v1';
+        let highScores = {
+            bestTrust: 0,
+            cavernsExplored: 0,
+            bestSurvivalTime: 0,
+            squidHerded: 0
+        };
+
+        function loadHighScores() {
+            try {
+                const stored = localStorage.getItem(HIGH_SCORE_KEY);
+                if (stored) {
+                    highScores = Object.assign(highScores, JSON.parse(stored));
+                }
+            } catch(e) { console.error('Failed to load high scores from localStorage', e); }
+            renderHighScoresUI();
+        }
+
+        function saveHighScores() {
+            try {
+                localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(highScores));
+            } catch(e) { console.error('Failed to save high scores', e); }
+            renderHighScoresUI();
+        }
+
+        function updateHighScores(currentTrust, currentCaverns, currentSeconds, currentSquid) {
+            let updated = false;
+            if (currentTrust > highScores.bestTrust) { highScores.bestTrust = currentTrust; updated = true; }
+            if (currentCaverns > highScores.cavernsExplored) { highScores.cavernsExplored = currentCaverns; updated = true; }
+            if (currentSeconds > highScores.bestSurvivalTime) { highScores.bestSurvivalTime = currentSeconds; updated = true; }
+            if (currentSquid > highScores.squidHerded) { highScores.squidHerded = currentSquid; updated = true; }
+            if (updated) saveHighScores();
+        }
+
+        function formatTime(totalSec) {
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function renderHighScoresUI() {
+            document.getElementById('hs-trust').innerText = highScores.bestTrust + '%';
+            document.getElementById('hs-caverns').innerText = highScores.cavernsExplored + ' / 4';
+            document.getElementById('hs-time').innerText = formatTime(highScores.bestSurvivalTime);
+            document.getElementById('hs-squid').innerText = highScores.squidHerded;
+        }
+
+        // World Map Boundaries (Vast Open Ocean & Caverns)
+        const WORLD_WIDTH = 4000;
+        const WORLD_HEIGHT = 5000;
+        let camera = { x: WORLD_WIDTH / 2 - window.innerWidth / 2, y: 300 - window.innerHeight / 2 };
+
+        // Player Whale State (Heavy Leviathan Fluid Mechanics)
+        let whale = {
+            x: WORLD_WIDTH / 2, y: 300,
+            vx: 0, vy: 0,
+            angle: Math.PI / 2, angularVelocity: 0,
+            thrust: 0.08, drag: 0.982, // Slower, graceful momentum & heavy mass feel
+            tailPhase: 0, depth: 150, energy: 100,
+            squidEaten: 0, fishEaten: 0, podTrust: 0,
+            pingCharge: 0, isChargingPing: false
+        };
+
+        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false, e: false, f: false, Shift: false, ' ': false };
+        const lastTapTime = {};
+
+        window.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                togglePause();
+                return;
+            }
+            if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+            if (e.key === ' ' && gameState === 'PLAYING' && !whale.isChargingPing) {
+                whale.isChargingPing = true;
+                whale.pingCharge = 0;
+            }
+            if ((e.key === 'e' || e.key === 'E' || e.key === 'Shift') && gameState === 'PLAYING') triggerStunPulse();
+            if ((e.key === 'f' || e.key === 'F') && gameState === 'PLAYING') triggerSpeedSurge();
+            if (['1', '2', '3', '4'].includes(e.key) && gameState === 'PLAYING') handleCodaInput(e.key);
+
+            // Double Tap Direction detection for Speed Surge
+            const dirKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'];
+            if (dirKeys.includes(e.key) && gameState === 'PLAYING') {
+                const now = Date.now();
+                if (lastTapTime[e.key] && (now - lastTapTime[e.key] < 280)) {
+                    triggerSpeedSurge();
+                }
+                lastTapTime[e.key] = now;
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+            if (e.key === ' ' && gameState === 'PLAYING' && whale.isChargingPing) {
+                whale.isChargingPing = false;
+                triggerPing(whale.pingCharge);
+                whale.pingCharge = 0;
+            }
+        });
+
+        // World Objects
+        let pulses = [];
+        let stunPulses = [];
+        let terrain = [];
+        let caverns = [];
+        let echoGlyphs = [];
+        let squid = [];
+        let lanternfish = [];
+        let apexPredators = [];
+        let architeuthisBoss = null;
+        let podWhales = [];
+        let thermalVents = [];
+        let bubbleRings = [];
+        let thermoclines = [];
+        let bioluminescentPlankton = [];
+        let refractionRings = [];
+        let wakeParticles = [];
+        let shockParticles = [];
+        let rippleRings = [];
+        let cavernsExploredCount = 0;
+
+        // Active Duet Challenge
+        let activeDuet = {
+            targetKey: null,
+            targetCoda: null,
+            timer: 0,
+            maxTimer: 400,
+            speaker: null,
+            beats: []
+        };
+
+        function triggerStunPulse() {
+            if (whale.energy < 15) return;
+            whale.energy -= 15;
+            stunPulses.push({ x: whale.x, y: whale.y, radius: 0, maxRadius: 380, alpha: 1.0 });
+            recordRiteAction('STUN');
+
+            for (let i = 0; i < 28; i++) {
+                const angle = (i / 28) * Math.PI * 2;
+                shockParticles.push({
+                    x: whale.x, y: whale.y,
+                    vx: Math.cos(angle) * (7 + Math.random() * 5),
+                    vy: Math.sin(angle) * (7 + Math.random() * 5),
+                    life: 1.0, color: '#00ffff'
+                });
+            }
+
+            squid.forEach(s => {
+                if (s.alive && Math.hypot(s.x - whale.x, s.y - whale.y) < 380) {
+                    s.trappedInNet = true;
+                    s.visibility = 1.0;
+                }
+            });
+
+            apexPredators.forEach(p => {
+                if (p.alive && Math.hypot(p.x - whale.x, p.y - whale.y) < 420) {
+                    p.stunTimer = 180;
+                    p.visibility = 1.0;
+                }
+            });
+
+            if (architeuthisBoss && architeuthisBoss.alive && Math.hypot(architeuthisBoss.x - whale.x, architeuthisBoss.y - whale.y) < 450) {
+                architeuthisBoss.stunTimer = 180;
+                architeuthisBoss.visibility = 1.0;
+            }
+
+            if (audioEngine && !audioMuted) audioEngine.playCoda({ clan: 'caribbean', codaIndex: 2 });
+        }
+
+        function triggerSpeedSurge() {
+            if (whale.energy < 8) return;
+            whale.energy -= 8;
+            recordRiteAction('SURGE');
+
+            const boostForce = 8.5;
+            whale.vx += Math.cos(whale.angle) * boostForce;
+            whale.vy += Math.sin(whale.angle) * boostForce;
+
+            const rearX = whale.x - Math.cos(whale.angle) * 40;
+            const rearY = whale.y - Math.sin(whale.angle) * 40;
+            for (let i = 0; i < 16; i++) {
+                const spread = (Math.random() - 0.5) * 1.5;
+                shockParticles.push({
+                    x: rearX, y: rearY,
+                    vx: -Math.cos(whale.angle + spread) * (3 + Math.random() * 6),
+                    vy: -Math.sin(whale.angle + spread) * (3 + Math.random() * 6),
+                    life: 1.0, color: '#38bdf8'
+                });
+            }
+
+            if (audioEngine && !audioMuted) audioEngine.playCoda({ clan: 'pacific_regular', codaIndex: 0 });
+        }
+
+        function resetGameState() {
+            whale.x = WORLD_WIDTH / 2;
+            whale.y = 300;
+            camera.x = whale.x - canvas.width / 2;
+            camera.y = whale.y - canvas.height / 2;
+            whale.vx = 0; whale.vy = 0;
+            whale.angle = Math.PI / 2;
+            whale.angularVelocity = 0;
+            whale.depth = 150;
+            whale.energy = 100;
+            whale.squidEaten = 0;
+            whale.fishEaten = 0;
+            whale.podTrust = 0;
+
+            pulses = [];
+            stunPulses = [];
+            terrain = [];
+            caverns = [];
+            echoGlyphs = [];
+            squid = [];
+            lanternfish = [];
+            apexPredators = [];
+            architeuthisBoss = null;
+            podWhales = [];
+            thermalVents = [];
+            bubbleRings = [];
+            thermoclines = [];
+            bioluminescentPlankton = [];
+            refractionRings = [];
+            wakeParticles = [];
+            shockParticles = [];
+            rippleRings = [];
+            cavernsExploredCount = 0;
+            survivalTimeSeconds = 0;
+
+            activeDuet.targetKey = null;
+
+            document.getElementById('val-trust').innerText = '0%';
+            document.getElementById('fill-trust').style.width = '0%';
+            document.getElementById('val-squid').innerText = '0 / 5';
+            document.getElementById('val-fish').innerText = '0';
+            document.getElementById('val-caverns').innerText = '0 / 4';
+            document.getElementById('val-time').innerText = '00:00';
+            document.getElementById('val-danger').innerText = 'LVL 1 - SAFE';
+            document.getElementById('val-danger').style.color = '#4ade80';
+            document.getElementById('duet-target').innerText = 'READY (Keys 1-4)';
+            document.getElementById('duet-target').style.color = '#00ffcc';
+            document.getElementById('duet-timer-fill').style.width = '0%';
+
+            initWorld();
+        }
+
+        // Populate Ocean Environment across 4000x5000 canvas
+        function initWorld() {
+            // Thermocline Ocean Currents
+            for (let i = 0; i < 8; i++) {
+                thermoclines.push({
+                    y: 400 + i * 550,
+                    speed: (i % 2 === 0 ? 0.4 : -0.4),
+                    name: `Thermocline Stream ${i+1}`
+                });
+            }
+
+            // Pelagic & Midwater Seamounts & Rock Terrain
+            for (let i = 0; i < 120; i++) {
+                terrain.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: 300 + Math.random() * (WORLD_HEIGHT - 600),
+                    radius: 40 + Math.random() * 120,
+                    visibility: 0
+                });
+            }
+
+            // Abyssal Caverns (Depth > 1500m) & Echo Glyphs
+            for (let i = 0; i < 6; i++) {
+                const cavX = 200 + i * (WORLD_WIDTH / 6.5) + (Math.random() * 200 - 100);
+                const cavY = 2800 + Math.random() * 1800;
+                const cavW = 380 + Math.random() * 200;
+                const cavH = 240 + Math.random() * 140;
+
+                caverns.push({
+                    x: cavX,
+                    y: cavY,
+                    width: cavW,
+                    height: cavH,
+                    entryDir: Math.random() > 0.5 ? 'top' : 'bottom',
+                    entryOffset: 50 + Math.random() * (cavW - 180),
+                    entrySize: 60 + Math.random() * 20,
+                    name: `Cavern ${String.fromCharCode(65 + i)}-${Math.floor(10 + Math.random()*90)}`,
+                    illuminated: 0,
+                    discovered: false,
+                    echoScored: false
+                });
+
+                // Echo Glyph inside each cavern
+                echoGlyphs.push({
+                    x: cavX + cavW / 2,
+                    y: cavY + cavH / 2,
+                    symbol: ['⚡', '🔮', '🌀', '💎', '🐚', '🔱'][i],
+                    activated: false,
+                    visibility: 0
+                });
+            }
+
+            // Deep-sea Hydrothermal Vents
+            for (let i = 0; i < 8; i++) {
+                thermalVents.push({
+                    x: 300 + i * (WORLD_WIDTH / 8) + Math.random() * 100,
+                    y: WORLD_HEIGHT - 60,
+                    heat: 1.0,
+                    bubblePhase: Math.random() * 10
+                });
+            }
+
+            // Giant Squid Prey
+            for (let i = 0; i < 25; i++) {
+                squid.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: 500 + Math.random() * (WORLD_HEIGHT - 800),
+                    vx: (Math.random() - 0.5) * 1.2,
+                    vy: (Math.random() - 0.5) * 1.2,
+                    visibility: 0,
+                    trappedInNet: false,
+                    alive: true
+                });
+            }
+
+            // Bioluminescent Lanternfish Swarms
+            for (let s = 0; s < 8; s++) {
+                const swarmX = 300 + Math.random() * (WORLD_WIDTH - 600);
+                const swarmY = 400 + Math.random() * (WORLD_HEIGHT - 1000);
+                for (let i = 0; i < 18; i++) {
+                    lanternfish.push({
+                        swarmId: s,
+                        x: swarmX + (Math.random() - 0.5) * 160,
+                        y: swarmY + (Math.random() - 0.5) * 160,
+                        vx: (Math.random() - 0.5) * 1.6,
+                        vy: (Math.random() - 0.5) * 1.6,
+                        glowPhase: Math.random() * Math.PI * 2,
+                        visibility: 0,
+                        alive: true
+                    });
+                }
+            }
+
+            // Abyssal Apex Sharks
+            for (let i = 0; i < 8; i++) {
+                apexPredators.push({
+                    id: i + 1,
+                    x: 200 + Math.random() * (WORLD_WIDTH - 400),
+                    y: 2200 + Math.random() * 2400,
+                    vx: (Math.random() - 0.5) * 1.8,
+                    vy: (Math.random() - 0.5) * 1.8,
+                    angle: 0,
+                    length: 64,
+                    stunTimer: 0,
+                    visibility: 0,
+                    alive: true,
+                    target: null
+                });
+            }
+
+            // Giant Architeuthis Boss
+            architeuthisBoss = {
+                x: WORLD_WIDTH / 2,
+                y: WORLD_HEIGHT - 250,
+                vx: 0, vy: 0,
+                angle: -Math.PI / 2,
+                stunTimer: 0,
+                visibility: 0,
+                alive: true,
+                tentaclePhase: 0,
+                hp: 500,
+                maxHp: 500
+            };
+
+            // AI Pod Whales
+            const clanTypes = ['caribbean', 'pacific_plus_one', 'pacific_regular', 'mediterranean'];
+            for (let i = 0; i < 6; i++) {
+                podWhales.push({
+                    id: i + 1,
+                    x: 300 + i * (WORLD_WIDTH / 6.5) + Math.random() * 150,
+                    y: 500 + Math.random() * 2500,
+                    vx: (Math.random() - 0.5) * 0.8,
+                    vy: (Math.random() - 0.5) * 0.8,
+                    angle: Math.random() * Math.PI * 2,
+                    clan: clanTypes[i % clanTypes.length],
+                    tailPhase: Math.random() * 10,
+                    visibility: 0,
+                    allied: false,
+                    cooldown: 150 + Math.random() * 150
+                });
+            }
+
+            // Floating Bioluminescent Plankton
+            bioluminescentPlankton.length = 0;
+            for (let i = 0; i < 350; i++) {
+                bioluminescentPlankton.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: Math.random() * WORLD_HEIGHT,
+                    vx: (Math.random() - 0.5) * 0.25,
+                    vy: (Math.random() - 0.5) * 0.15 - 0.05,
+                    radius: 1.0 + Math.random() * 2.5,
+                    baseAlpha: 0.2 + Math.random() * 0.6,
+                    pulsePhase: Math.random() * Math.PI * 2,
+                    color: Math.random() > 0.4 ? 'rgba(0, 255, 204,' : 'rgba(56, 189, 248,'
+                });
+            }
+        }
+
+        function triggerPing(charge) {
+            const minCharge = 0;
+            const maxCharge = 60; // frames
+            const effectiveCharge = Math.min(charge, maxCharge);
+            const chargeRatio = effectiveCharge / maxCharge;
+
+            const energyCost = 4 + (chargeRatio * 8);
+            if (whale.energy < energyCost) return;
+            whale.energy -= energyCost;
+
+            const maxRadius = 900 + (chargeRatio * 1500); // Charged ping goes up to 2400
+            const expansionSpeed = 11 + (chargeRatio * 15);
+
+            pulses.push({ x: whale.x, y: whale.y, radius: 0, maxRadius: maxRadius, alpha: 1.0, speed: expansionSpeed });
+            for (let r = 0; r < 3; r++) {
+                setTimeout(() => {
+                    refractionRings.push({ x: whale.x, y: whale.y, radius: 10 + (chargeRatio*20), maxRadius: 160 + (chargeRatio*100) + (r*50), alpha: 0.9 - (r*0.2), color: 'rgba(0, 255, 204,' });
+                }, r * 200);
+            }
+            rippleRings.push({
+                x: whale.x,
+                y: whale.y,
+                startTime: performance.now(),
+                duration: 2000
+            });
+            recordRiteAction('SPACE');
+
+            if (audioEngine && !audioMuted) audioEngine.playCoda({ clan: 'caribbean', codaIndex: chargeRatio > 0.5 ? 2 : 0 });
+
+            // Allied whales echo secondary pings in solidarity
+            podWhales.filter(w => w.allied).forEach((alliedWhale, index) => {
+                setTimeout(() => {
+                    pulses.push({ x: alliedWhale.x, y: alliedWhale.y, radius: 0, maxRadius: 650 + (chargeRatio * 500), alpha: 0.8, speed: 11 + (chargeRatio * 5) });
+                    refractionRings.push({ x: alliedWhale.x, y: alliedWhale.y, radius: 10, maxRadius: 140, alpha: 0.8, color: 'rgba(251, 191, 36,' });
+                    if (audioEngine && !audioMuted) audioEngine.playCoda({ clan: alliedWhale.clan, codaIndex: (index + 1) % 3 });
+                }, 250 + index * 200);
+            });
+        }
+
+        function triggerPodDuet(aiWhale) {
+            const codaMap = [
+                { key: '1', name: '1+1+3 (Caribbean)', codaIndex: 0, beats: 5 },
+                { key: '2', name: '5R (Regular 5)', codaIndex: 1, beats: 5 },
+                { key: '3', name: '4+1 (Plus One)', codaIndex: 2, beats: 5 },
+                { key: '4', name: '3+1 Slow (Med)', codaIndex: 0, beats: 4 }
+            ];
+            const choice = codaMap[Math.floor(Math.random() * codaMap.length)];
+            activeDuet.targetKey = choice.key;
+            activeDuet.targetCoda = choice.name;
+            activeDuet.speaker = aiWhale;
+            activeDuet.timer = 400;
+            activeDuet.maxTimer = 400;
+            activeDuet.beats = choice.beats;
+
+            document.getElementById('duet-target').innerText = `PRESS [${choice.key}] : ${choice.name}`;
+            document.getElementById('duet-target').style.color = '#fbbf24';
+            document.getElementById('duet-timer-fill').style.width = '100%';
+
+            const beatContainer = document.getElementById('rhythm-beats-container');
+            beatContainer.innerHTML = '';
+            for (let b = 0; b < choice.beats; b++) {
+                const dot = document.createElement('div');
+                dot.className = 'beat-dot active';
+                beatContainer.appendChild(dot);
+            }
+
+            if (audioEngine && !audioMuted) {
+                audioEngine.playCoda({ clan: aiWhale.clan, codaIndex: choice.codaIndex, pan: (aiWhale.x - whale.x) / canvas.width });
+            }
+        }
+
+        function handleCodaInput(key) {
+            if (activeDuet.targetKey && key === activeDuet.targetKey) {
+                whale.podTrust = Math.min(100, whale.podTrust + 25);
+                if (activeDuet.speaker) {
+                    activeDuet.speaker.allied = true;
+                }
+                document.getElementById('val-trust').innerText = whale.podTrust + '%';
+                document.getElementById('fill-trust').style.width = whale.podTrust + '%';
+                document.getElementById('duet-target').innerText = 'DUET MATCHED! POD TRUST +25%';
+                document.getElementById('duet-target').style.color = '#00ffcc';
+                document.getElementById('duet-timer-fill').style.width = '0%';
+                recordRiteAction('DUET');
+
+                if (audioEngine && !audioMuted) {
+                    // Player answers
+                    audioEngine.playCoda({ clan: 'caribbean', codaIndex: 1 });
+                    pulses.push({ x: whale.x, y: whale.y, radius: 0, maxRadius: 500, alpha: 0.8, speed: 12 });
+                    
+                    // The two whales sing together in a duet chorus
+                    if (activeDuet.speaker) {
+                        const speaker = activeDuet.speaker;
+                        const speakerClan = speaker.clan;
+                        setTimeout(() => {
+                            audioEngine.playCoda({ clan: speakerClan, codaIndex: 2 });
+                            pulses.push({ x: speaker.x, y: speaker.y, radius: 0, maxRadius: 500, alpha: 0.8, speed: 12 });
+                        }, 350);
+                        setTimeout(() => {
+                            audioEngine.playCoda({ clan: 'caribbean', codaIndex: 2 });
+                            pulses.push({ x: whale.x, y: whale.y, radius: 0, maxRadius: 600, alpha: 0.8, speed: 12 });
+                        }, 700);
+                        setTimeout(() => {
+                            audioEngine.playCoda({ clan: speakerClan, codaIndex: 3 });
+                            audioEngine.playCoda({ clan: 'caribbean', codaIndex: 3 });
+                            pulses.push({ x: speaker.x, y: speaker.y, radius: 0, maxRadius: 800, alpha: 1.0, speed: 14 });
+                            pulses.push({ x: whale.x, y: whale.y, radius: 0, maxRadius: 800, alpha: 1.0, speed: 14 });
+                            refractionRings.push({ x: speaker.x, y: speaker.y, radius: 20, maxRadius: 300, alpha: 0.9, color: 'rgba(251, 191, 36,' });
+                            refractionRings.push({ x: whale.x, y: whale.y, radius: 20, maxRadius: 300, alpha: 0.9, color: 'rgba(0, 255, 204,' });
+                        }, 1100);
+                    }
+                }
+
+                activeDuet.targetKey = null;
+                updateHighScores(whale.podTrust, cavernsExploredCount, survivalTimeSeconds, whale.squidEaten);
+                checkVictoryConditions();
+            } else if (activeDuet.targetKey) {
+                document.getElementById('duet-target').innerText = 'MISMATCH! TRY AGAIN';
+                document.getElementById('duet-target').style.color = '#ef4444';
+            }
+        }
+
+        function startSurvivalTimer() {
+            stopSurvivalTimer();
+            survivalTimerInterval = setInterval(() => {
+                if (gameState === 'PLAYING') {
+                    survivalTimeSeconds++;
+                    document.getElementById('val-time').innerText = formatTime(survivalTimeSeconds);
+                    updateHighScores(whale.podTrust, cavernsExploredCount, survivalTimeSeconds, whale.squidEaten);
+                }
+            }, 1000);
+        }
+
+        function stopSurvivalTimer() {
+            if (survivalTimerInterval) clearInterval(survivalTimerInterval);
+        }
+
+        function togglePause() {
+            if (gameState === 'PLAYING' || gameState === 'TUTORIAL') {
+                gameState = 'PAUSED';
+                document.getElementById('pause-screen').classList.remove('hidden');
+            } else if (gameState === 'PAUSED') {
+                gameState = 'PLAYING';
+                document.getElementById('pause-screen').classList.add('hidden');
+            }
+        }
+
+        function triggerGameOver() {
+            gameState = 'GAMEOVER';
+            stopSurvivalTimer();
+            updateHighScores(whale.podTrust, cavernsExploredCount, survivalTimeSeconds, whale.squidEaten);
+            document.getElementById('go-stat-time').innerText = formatTime(survivalTimeSeconds);
+            document.getElementById('go-stat-squid').innerText = whale.squidEaten;
+            document.getElementById('go-stat-trust').innerText = whale.podTrust + '%';
+            document.getElementById('go-stat-caverns').innerText = cavernsExploredCount + ' / 4';
+            document.getElementById('gameover-screen').classList.remove('hidden');
+        }
+
+        function checkVictoryConditions() {
+            if (whale.podTrust >= 75 && whale.squidEaten >= 5 && cavernsExploredCount >= 3) {
+                gameState = 'VICTORY';
+                stopSurvivalTimer();
+                updateHighScores(whale.podTrust, cavernsExploredCount, survivalTimeSeconds, whale.squidEaten);
+                document.getElementById('vic-stat-time').innerText = formatTime(survivalTimeSeconds);
+                document.getElementById('vic-stat-squid').innerText = whale.squidEaten + ' / 5';
+                document.getElementById('vic-stat-trust').innerText = whale.podTrust + '%';
+                document.getElementById('vic-stat-caverns').innerText = cavernsExploredCount + ' / 4';
+                document.getElementById('victory-screen').classList.remove('hidden');
+                if (audioEngine && !audioMuted) {
+                    audioEngine.performExchangeChorus({ exchanges: 3 });
+                }
+            }
+        }
+
+        // Seashell Puppet Show Cutscene Renderer & Story Engine
+        let puppetStep = 0;
+        const PUPPET_STORY = [
+            {
+                heading: "I. THE ANCIENT MATRIARCH'S CALL",
+                text: '"Before the Hadal trenches grew silent, the Great Matriarch pod guided young calves through the pitch-black abyss..."',
+                draw: (pCtx, width, height, phase) => {
+                    // Seashell vignette frame
+                    pCtx.strokeStyle = '#eab308'; pCtx.lineWidth = 4;
+                    pCtx.strokeRect(10, 10, width - 20, height - 20);
+
+                    // Mother Whale & Small Calf puppet silhouettes
+                    const motherX = 220 + Math.sin(phase) * 15;
+                    const motherY = 110 + Math.cos(phase * 0.8) * 8;
+
+                    pCtx.save(); pCtx.translate(motherX, motherY);
+                    pCtx.beginPath(); pCtx.ellipse(0, 0, 70, 35, 0, 0, Math.PI * 2);
+                    pCtx.fillStyle = '#00ffcc'; pCtx.fill();
+                    pCtx.strokeStyle = '#38bdf8'; pCtx.lineWidth = 3; pCtx.stroke();
+                    pCtx.restore();
+
+                    // Calf Whale Puppet
+                    const calfX = motherX - 110;
+                    const calfY = motherY + 25 + Math.sin(phase * 1.5) * 6;
+                    pCtx.save(); pCtx.translate(calfX, calfY);
+                    pCtx.beginPath(); pCtx.ellipse(0, 0, 35, 18, 0, 0, Math.PI * 2);
+                    pCtx.fillStyle = '#38bdf8'; pCtx.fill(); pCtx.restore();
+
+                    // Ethereal Coda Sound Waves
+                    for (let r = 0; r < 3; r++) {
+                        const radius = ((phase * 40 + r * 35) % 120);
+                        pCtx.beginPath(); pCtx.arc(motherX + 60, motherY, radius, -Math.PI*0.3, Math.PI*0.3);
+                        pCtx.strokeStyle = `rgba(251, 191, 36, ${1 - radius/120})`; pCtx.lineWidth = 2; pCtx.stroke();
+                    }
+                }
+            },
+            {
+                heading: "II. THE ABYSSAL ECHO RITES",
+                text: '"To survive in the sunless deep, a leviathan must master heavy momentum, biological sonar, and the sacred pod duets..."',
+                draw: (pCtx, width, height, phase) => {
+                    pCtx.strokeStyle = '#eab308'; pCtx.lineWidth = 4;
+                    pCtx.strokeRect(10, 10, width - 20, height - 20);
+
+                    // Wireframe seamounts & glowing glyph
+                    pCtx.beginPath(); pCtx.arc(450, 140, 60, 0, Math.PI * 2);
+                    pCtx.fillStyle = 'rgba(0, 255, 204, 0.15)'; pCtx.fill();
+                    pCtx.strokeStyle = '#00ffcc'; pCtx.lineWidth = 2; pCtx.stroke();
+
+                    // Wireframe echo ring
+                    const waveR = (phase * 50) % 200;
+                    pCtx.beginPath(); pCtx.arc(150, 110, waveR, 0, Math.PI * 2);
+                    pCtx.strokeStyle = `rgba(56, 189, 248, ${1 - waveR/200})`; pCtx.stroke();
+
+                    // Echo symbol
+                    pCtx.font = '28px serif'; pCtx.fillStyle = '#fbbf24';
+                    pCtx.fillText('🌀 RITE OF THE POD', 320, 70);
+                }
+            },
+            {
+                heading: "III. BECOME THE LEVIATHAN",
+                text: '"Listen to your Mother Elder. Complete her ceremonial rites to earn your place in the pod!"',
+                draw: (pCtx, width, height, phase) => {
+                    pCtx.strokeStyle = '#eab308'; pCtx.lineWidth = 4;
+                    pCtx.strokeRect(10, 10, width - 20, height - 20);
+
+                    // Matriarch Mother silhouette facing forward
+                    pCtx.save(); pCtx.translate(width / 2, height / 2);
+                    pCtx.beginPath(); pCtx.ellipse(0, 0, 120, 50, 0, 0, Math.PI * 2);
+                    pCtx.fillStyle = 'rgba(0, 255, 204, 0.85)'; pCtx.fill();
+                    pCtx.strokeStyle = '#fbbf24'; pCtx.lineWidth = 3; pCtx.stroke();
+                    pCtx.restore();
+                }
+            }
+        ];
+
+        const puppetCanvas = document.getElementById('puppet-canvas');
+        const pCtx = puppetCanvas ? puppetCanvas.getContext('2d') : null;
+        let puppetAnimId = null;
+
+        function renderPuppetShow() {
+            if (!pCtx) return;
+            pCtx.fillStyle = '#000c1e';
+            pCtx.fillRect(0, 0, puppetCanvas.width, puppetCanvas.height);
+
+            const scene = PUPPET_STORY[puppetStep];
+            if (scene) {
+                document.getElementById('puppet-narrative').innerText = scene.text;
+                scene.draw(pCtx, puppetCanvas.width, puppetCanvas.height, Date.now() / 600);
+            }
+            puppetAnimId = requestAnimationFrame(renderPuppetShow);
+        }
+
+        document.getElementById('btn-puppet-next').addEventListener('click', () => {
+            puppetStep++;
+            if (puppetStep >= PUPPET_STORY.length) {
+                closePrologueAndStartRites();
+            } else {
+                document.getElementById('btn-puppet-next').innerText = `CONTINUE SONG (${puppetStep + 1} / ${PUPPET_STORY.length})`;
+            }
+        });
+
+        document.getElementById('btn-puppet-skip').addEventListener('click', closePrologueAndStartRites);
+
+        function closePrologueAndStartRites() {
+            if (puppetAnimId) cancelAnimationFrame(puppetAnimId);
+            document.getElementById('prologue-screen').classList.add('hidden');
+            document.getElementById('tutorial').classList.add('hidden');
+            resetGameState();
+            gameState = 'PLAYING';
+            startMotherRites();
+            startSurvivalTimer();
+        }
+
+        // Mother's Ceremonial Rite Gatekeeper System
+        let riteActive = false;
+        let currentRiteIndex = 0; // 0: Thrust, 1: Turn, 2: Ping, 3: Duet, 4: Stun Pulse, 5: Speed Surge
+        let currentRiteProgress = 0;
+
+        const MOTHER_RITES = [
+            {
+                title: "LESSON I: KINETIC MOMENTUM",
+                quote: '"My young calf, water is heavy like liquid stone. Feel your fluke push against the abyss..."',
+                task: "Task: Thrust forward 5 times using [W / Up Arrow]",
+                targetCount: 5,
+                keyRequired: 'W'
+            },
+            {
+                title: "LESSON II: LEVIATHAN ROTATION",
+                quote: '"A leviathan must turn gracefully in the dark. Rotate your body with ocean currents..."',
+                task: "Task: Turn left or right 6 times using [A / D / Arrow Keys]",
+                targetCount: 6,
+                keyRequired: 'TURN'
+            },
+            {
+                title: "LESSON III: BIOPHYSICAL SONAR PING",
+                quote: '"Open your mind\'s eye! Echolocation reveals what sunlight hides in the deep..."',
+                task: "Task: Send 3 Biophysical Sonar Pings using [SPACEBAR]",
+                targetCount: 3,
+                keyRequired: 'SPACE'
+            },
+            {
+                title: "LESSON IV: POD CLAN DUETS",
+                quote: '"We do not swim alone. Reply to your pod elder\'s coda song when they call!"',
+                task: "Task: Answer & Match 2 Pod Codas using [Keys 1-4]",
+                targetCount: 2,
+                keyRequired: 'DUET'
+            },
+            {
+                title: "LESSON V: ACOUSTIC STUN SHOCKWAVE",
+                quote: '"Abyssal predators lurk in Hadal trenches. Paralyze apex sharks with your acoustic shockwave!"',
+                task: "Task: Trigger 2 Stun Shockwaves using [Key E / Shift]",
+                targetCount: 2,
+                keyRequired: 'STUN'
+            },
+            {
+                title: "LESSON VI: TAIL FLUKE SURGE",
+                quote: '"When danger approaches fast, unleash the full kinetic fury of your tail fluke!"',
+                task: "Task: Unleash 2 Speed Fluke Surges using [Key F / Double-Tap Direction]",
+                targetCount: 2,
+                keyRequired: 'SURGE'
+            }
+        ];
+
+        function startMotherRites() {
+            riteActive = true;
+            currentRiteIndex = 0;
+            currentRiteProgress = 0;
+            showRiteModal();
+        }
+
+        function showRiteModal() {
+            const rite = MOTHER_RITES[currentRiteIndex];
+            if (!rite) {
+                riteActive = false;
+                document.getElementById('rite-modal').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('rite-heading').innerText = rite.title;
+            document.getElementById('mother-quote').innerText = rite.quote;
+            document.getElementById('rite-task-desc').innerHTML = rite.task;
+            document.getElementById('rite-counter-display').innerText = `PROGRESS: ${currentRiteProgress} / ${rite.targetCount}`;
+            document.getElementById('rite-modal').classList.remove('hidden');
+
+            if (audioEngine && !audioMuted) {
+                audioEngine.playCoda({ clan: 'caribbean', codaIndex: 0 });
+            }
+        }
+
+        function recordRiteAction(actionType) {
+            if (!riteActive) return;
+            const rite = MOTHER_RITES[currentRiteIndex];
+            if (!rite) return;
+
+            if (rite.keyRequired === actionType) {
+                currentRiteProgress++;
+                document.getElementById('rite-counter-display').innerText = `PROGRESS: ${currentRiteProgress} / ${rite.targetCount}`;
+
+                if (currentRiteProgress >= rite.targetCount) {
+                    currentRiteIndex++;
+                    currentRiteProgress = 0;
+                    if (currentRiteIndex >= MOTHER_RITES.length) {
+                        riteActive = false;
+                        document.getElementById('rite-modal').classList.add('hidden');
+                        if (audioEngine && !audioMuted) {
+                            audioEngine.performExchangeChorus({ exchanges: 2 });
+                        }
+                    } else {
+                        showRiteModal();
+                    }
+                }
+            }
+        }
+
+        // Audio Controls Binding
+        function updateAudioUI() {
+            const toggleText = audioMuted ? '🔇 Sound: OFF' : '🔊 Sound: ON';
+            document.getElementById('hud-audio-toggle').innerText = toggleText;
+            document.getElementById('pause-audio-toggle').innerText = toggleText;
+            document.getElementById('hud-volume-slider').value = currentVolume;
+            document.getElementById('pause-volume-slider').value = currentVolume;
+        }
+
+        function toggleAudioState() {
+            audioMuted = !audioMuted;
+            if (audioEngine) {
+                if (audioMuted) audioEngine.setMasterVolume(0);
+                else audioEngine.setMasterVolume(currentVolume);
+            }
+            updateAudioUI();
+        }
+
+        function setVolume(val) {
+            currentVolume = parseFloat(val);
+            if (audioEngine && !audioMuted) {
+                audioEngine.setMasterVolume(currentVolume);
+            }
+            updateAudioUI();
+        }
+
+        document.getElementById('hud-audio-toggle').addEventListener('click', toggleAudioState);
+        document.getElementById('pause-audio-toggle').addEventListener('click', toggleAudioState);
+        document.getElementById('hud-volume-slider').addEventListener('input', (e) => setVolume(e.target.value));
+        document.getElementById('pause-volume-slider').addEventListener('input', (e) => setVolume(e.target.value));
+
+        // Auto-launch Prologue Cutscene on load
+        window.addEventListener('DOMContentLoaded', () => {
+            resize();
+            resetGameState();
+            puppetStep = 0;
+            renderPuppetShow();
+            ensureAudioInit(); // Auto-resume WebAudio Context
+        });
+
+        // Initialize WebAudio on user interaction with prologue
+        async function ensureAudioInit() {
+            try {
+                if (!audioEngine) {
+                    audioEngine = new CetaceaAudioEngine();
+                    await audioEngine.init();
+                    audioEngine.setMasterVolume(currentVolume);
+                }
+            } catch(e) { console.log('Audio init error:', e); }
+        }
+
+        document.getElementById('btn-puppet-next').addEventListener('click', ensureAudioInit);
+        document.getElementById('btn-puppet-skip').addEventListener('click', ensureAudioInit);
+
+        document.getElementById('btn-resume').addEventListener('click', () => {
+            gameState = 'PLAYING';
+            document.getElementById('pause-screen').classList.add('hidden');
+        });
+
+        document.getElementById('btn-restart-pause').addEventListener('click', () => {
+            if (puppetAnimId) cancelAnimationFrame(puppetAnimId);
+            document.getElementById('prologue-screen').classList.add('hidden');
+            document.getElementById('pause-screen').classList.add('hidden');
+            resetGameState();
+            gameState = 'PLAYING';
+            startSurvivalTimer();
+        });
+
+        document.getElementById('btn-quit-app').addEventListener('click', () => {
+            if (window.electronAPI) {
+                window.electronAPI.quitApp();
+            } else {
+                window.close();
+            }
+        });
+
+        document.getElementById('btn-respawn').addEventListener('click', () => {
+            document.getElementById('gameover-screen').classList.add('hidden');
+            resetGameState();
+            gameState = 'PLAYING';
+            startSurvivalTimer();
+        });
+
+        document.getElementById('btn-victory-restart').addEventListener('click', () => {
+            document.getElementById('victory-screen').classList.add('hidden');
+            resetGameState();
+            gameState = 'PLAYING';
+            startSurvivalTimer();
+        });
+
+        // Initialize High Scores on load
+        loadHighScores();
+
+        // Main Game Loop
+        function animate() {
+            // Dynamic Ocean Depth Gradient (Sunlit Teal -> Mesopelagic Blue -> Hadal Abyss Indigo)
+            const depthRatio = Math.min(1.0, whale.depth / 3000);
+            const oceanGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            if (depthRatio < 0.15) {
+                oceanGradient.addColorStop(0, '#001a33');
+                oceanGradient.addColorStop(1, '#000814');
+            } else if (depthRatio < 0.5) {
+                oceanGradient.addColorStop(0, '#000d21');
+                oceanGradient.addColorStop(1, '#00040e');
+            } else {
+                oceanGradient.addColorStop(0, '#000510');
+                oceanGradient.addColorStop(1, '#000208');
+            }
+            ctx.fillStyle = oceanGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === 'PLAYING') {
+                // Energy & Oxygen Maintenance
+                if (whale.y < 120) {
+                    whale.energy = Math.min(100, whale.energy + 0.5); // Breaching / Surface Oxygen Refill
+                } else if (whale.depth > 800) {
+                    whale.energy = Math.max(0, whale.energy - 0.04); // Hadal oxygen pressure drain
+                } else {
+                    whale.energy = Math.max(0, whale.energy - 0.015);
+                }
+                document.getElementById('val-energy').innerText = Math.round(whale.energy) + '%';
+                document.getElementById('fill-energy').style.width = whale.energy + '%';
+
+                if (whale.energy <= 0) {
+                    triggerGameOver();
+                }
+
+                // Heavy leviathan turning inertia
+                if (keys.ArrowLeft || keys.a) { whale.angularVelocity -= 0.0035; recordRiteAction('TURN'); }
+                if (keys.ArrowRight || keys.d) { whale.angularVelocity += 0.0035; recordRiteAction('TURN'); }
+                if (keys.ArrowUp || keys.w) {
+                    whale.vx += Math.cos(whale.angle) * whale.thrust;
+                    whale.vy += Math.sin(whale.angle) * whale.thrust;
+                    whale.tailPhase += 0.09; // Slower tail fluke cycle
+                    recordRiteAction('W');
+
+                    const tailX = whale.x - Math.cos(whale.angle) * 65;
+                    const tailY = whale.y - Math.sin(whale.angle) * 65;
+                    const wakeSpeed = Math.hypot(whale.vx, whale.vy);
+                    for (let w = 0; w < 2; w++) {
+                        wakeParticles.push({
+                            x: tailX + (Math.random() - 0.5) * 12,
+                            y: tailY + (Math.random() - 0.5) * 12,
+                            vx: -Math.cos(whale.angle) * (0.8 + Math.random()) + (Math.random() - 0.5) * 0.4,
+                            vy: -Math.sin(whale.angle) * (0.8 + Math.random()) + (Math.random() - 0.5) * 0.4,
+                            radius: 3 + Math.random() * 4 + wakeSpeed * 0.5,
+                            alpha: 0.7 + Math.random() * 0.3
+                        });
+                    }
+                }
+
+                whale.angle += whale.angularVelocity;
+                whale.angularVelocity *= 0.91;
+                whale.x += whale.vx; whale.y += whale.vy;
+                whale.vx *= whale.drag; whale.vy *= whale.drag;
+
+                // World Boundaries (4000 x 5000)
+                let collided = false;
+                if (whale.x < 50) { whale.x = 50; collided = true; }
+                if (whale.x > WORLD_WIDTH - 50) { whale.x = WORLD_WIDTH - 50; collided = true; }
+                if (whale.y < 80) { whale.y = 80; collided = true; }
+                if (whale.y > WORLD_HEIGHT - 80) { whale.y = WORLD_HEIGHT - 80; collided = true; }
+                if (collided && audioEngine && !audioMuted) {
+                    const speed = Math.hypot(whale.vx, whale.vy);
+                    audioEngine.playImpactClick(Math.min(1.0, 0.4 + speed * 0.2), 'wall');
+                }
+
+                // Camera follow smoothing
+                const targetCamX = whale.x - canvas.width / 2;
+                const targetCamY = whale.y - canvas.height / 2;
+                camera.x += (targetCamX - camera.x) * 0.08;
+                camera.y += (targetCamY - camera.y) * 0.08;
+                camera.x = Math.max(0, Math.min(WORLD_WIDTH - canvas.width, camera.x));
+                camera.y = Math.max(0, Math.min(WORLD_HEIGHT - canvas.height, camera.y));
+
+                // Depth calculation (0m - 3000m depth scaling)
+                whale.depth = Math.round((whale.y / WORLD_HEIGHT) * 3000);
+                document.getElementById('val-depth').innerText = whale.depth + 'm';
+                document.getElementById('fill-depth').style.width = Math.min(100, (whale.depth / 3000) * 100) + '%';
+
+                // Region HUD update
+                const regionElem = document.getElementById('val-region');
+                const dangerElem = document.getElementById('val-danger');
+                if (whale.depth < 300) {
+                    regionElem.innerText = 'Sunlit Pelagic';
+                    dangerElem.innerText = 'LVL 1 - SAFE'; dangerElem.style.color = '#4ade80';
+                } else if (whale.depth < 600) {
+                    regionElem.innerText = 'Mesopelagic Twilight Zone';
+                    dangerElem.innerText = 'LVL 2 - MODERATE'; dangerElem.style.color = '#fbbf24';
+                } else if (whale.depth < 850) {
+                    regionElem.innerText = 'Abyssal Cavern Trench';
+                    dangerElem.innerText = 'LVL 3 - HIGH DANGER'; dangerElem.style.color = '#f97316';
+                } else {
+                    regionElem.innerText = 'Hadal Trench Floor';
+                    dangerElem.innerText = 'LVL 4 - APEX HAZARD'; dangerElem.style.color = '#ef4444';
+                }
+
+                // Process Duet Timer & Bar
+                if (activeDuet.timer > 0) {
+                    activeDuet.timer--;
+                    const pct = (activeDuet.timer / activeDuet.maxTimer) * 100;
+                    document.getElementById('duet-timer-fill').style.width = pct + '%';
+
+                    if (activeDuet.timer === 0 && activeDuet.targetKey) {
+                        document.getElementById('duet-target').innerText = 'DUET TIMED OUT';
+                        document.getElementById('duet-target').style.color = '#94a3b8';
+                        document.getElementById('duet-timer-fill').style.width = '0%';
+                        activeDuet.targetKey = null;
+                    }
+                }
+            }
+
+            // Apply Camera Translation Matrix
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+
+            // Render Bioluminescent Plankton
+            bioluminescentPlankton.forEach(p => {
+                if (gameState === 'PLAYING') {
+                    p.x += p.vx; p.y += p.vy; p.pulsePhase += 0.03;
+                    if (p.x < 0) p.x = WORLD_WIDTH;
+                    if (p.x > WORLD_WIDTH) p.x = 0;
+                    if (p.y < 0) p.y = WORLD_HEIGHT;
+                    if (p.y > WORLD_HEIGHT) p.y = 0;
+
+                    const distToWhale = Math.hypot(whale.x - p.x, whale.y - p.y);
+                    if (distToWhale < 110) {
+                        const angle = Math.atan2(p.y - whale.y, p.x - whale.x);
+                        p.x += Math.cos(angle) * 1.5;
+                        p.y += Math.sin(angle) * 1.5;
+                    }
+                }
+
+                const currentAlpha = Math.max(0.05, p.baseAlpha + Math.sin(p.pulsePhase) * 0.25);
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `${p.color} ${currentAlpha})`;
+                ctx.fill();
+            });
+
+            // Render Wake Particles
+            for (let i = wakeParticles.length - 1; i >= 0; i--) {
+                const wp = wakeParticles[i];
+                if (gameState === 'PLAYING') {
+                    wp.x += wp.vx; wp.y += wp.vy;
+                    wp.radius *= 1.02; wp.alpha *= 0.94;
+                }
+                if (wp.alpha < 0.03) { wakeParticles.splice(i, 1); continue; }
+
+                ctx.beginPath();
+                ctx.arc(wp.x, wp.y, wp.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(56, 189, 248, ${wp.alpha * 0.5})`;
+                ctx.fill();
+            }
+
+            // Render Shockwave Particles
+            for (let i = shockParticles.length - 1; i >= 0; i--) {
+                const sp = shockParticles[i];
+                if (gameState === 'PLAYING') {
+                    sp.x += sp.vx; sp.y += sp.vy;
+                    sp.life *= 0.92;
+                }
+                if (sp.life < 0.03) { shockParticles.splice(i, 1); continue; }
+
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, 3 * sp.life, 0, Math.PI * 2);
+                ctx.fillStyle = sp.color || '#00ffff';
+                ctx.fill();
+            }
+
+            // Render Stun Pulses
+            for (let i = stunPulses.length - 1; i >= 0; i--) {
+                const sp = stunPulses[i];
+                if (gameState === 'PLAYING') {
+                    sp.radius += 14;
+                    sp.alpha = 1 - (sp.radius / sp.maxRadius);
+                }
+                if (sp.radius >= sp.maxRadius) { stunPulses.splice(i, 1); continue; }
+
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, sp.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(0, 255, 255, ${sp.alpha})`;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            }
+
+            // Hydrothermal Vents
+            let minVentDist = Infinity;
+            thermalVents.forEach(vent => {
+                if (gameState === 'PLAYING') {
+                    vent.bubblePhase += 0.05;
+                    const distToWhale = Math.hypot(whale.x - vent.x, whale.y - vent.y);
+                    if (distToWhale < minVentDist) minVentDist = distToWhale;
+                    if (distToWhale < 100) {
+                        whale.energy = Math.min(100, whale.energy + 0.15);
+                    }
+                }
+
+                ctx.save();
+                ctx.fillStyle = '#ff5500';
+                ctx.beginPath();
+                ctx.arc(vent.x, vent.y, 24, Math.PI, 0);
+                ctx.fill();
+
+                for (let b = 0; b < 4; b++) {
+                    const py = vent.y - ((vent.bubblePhase * 30 + b * 25) % 140);
+                    const px = vent.x + Math.sin(vent.bubblePhase + b) * 14;
+                    const alpha = 1 - (vent.y - py) / 140;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 4 + b * 1.8, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 120, 30, ${alpha * 0.6})`;
+                    ctx.fill();
+                }
+                ctx.restore();
+            });
+
+            if (audioEngine && !audioMuted) {
+                const prox = Math.max(0, 1 - minVentDist / 450);
+                audioEngine.setVentProximity(prox);
+            }
+
+            // Refraction Glow Rings
+            for (let i = refractionRings.length - 1; i >= 0; i--) {
+                const ring = refractionRings[i];
+                if (gameState === 'PLAYING') {
+                    ring.radius += 3.5; ring.alpha *= 0.95;
+                }
+                if (ring.alpha < 0.02 || ring.radius > ring.maxRadius) {
+                    refractionRings.splice(i, 1); continue;
+                }
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(ring.x, ring.y, ring.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `${ring.color || 'rgba(0, 255, 204,'} ${ring.alpha * 0.7})`;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Visual Ripple Rings
+            const currentPerfTime = performance.now();
+            for (let i = rippleRings.length - 1; i >= 0; i--) {
+                const ring = rippleRings[i];
+                if (gameState === 'PAUSED') {
+                    ring.startTime += (currentPerfTime - ring.lastTime) || 0;
+                }
+                ring.lastTime = currentPerfTime;
+
+                const elapsed = currentPerfTime - ring.startTime;
+                if (elapsed >= ring.duration) {
+                    rippleRings.splice(i, 1);
+                    continue;
+                }
+
+                const progress = elapsed / ring.duration;
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const currentRadius = easeOut * 600; 
+                const alpha = 1.0 - progress;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(ring.x, ring.y, currentRadius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(0, 255, 204, ${alpha})`;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Abyssal Caverns
+            caverns.forEach(cav => {
+                if (gameState === 'PLAYING') {
+                    cav.illuminated *= 0.985;
+                    pulses.forEach(p => {
+                        const dist = Math.hypot((cav.x + cav.width/2) - p.x, (cav.y + cav.height/2) - p.y);
+                        if (Math.abs(dist - p.radius) < 150) {
+                            cav.illuminated = 1.0;
+                            if (!cav.discovered) {
+                                cav.discovered = true;
+                                cavernsExploredCount++;
+                                whale.podTrust = Math.min(100, whale.podTrust + 15);
+                                document.getElementById('val-trust').innerText = whale.podTrust + '%';
+                                document.getElementById('fill-trust').style.width = whale.podTrust + '%';
+                                document.getElementById('val-caverns').innerText = cavernsExploredCount + ' / 6';
+                                updateHighScores(whale.podTrust, cavernsExploredCount, survivalTimeSeconds, whale.squidEaten);
+                                checkVictoryConditions();
+                            }
+                        }
+                    });
+
+                    // Collision detection with cavern walls
+                    const wallThick = 20;
+                    
+                    if (whale.isChargingPing && whale.x > cav.x && whale.x < cav.x + cav.width && whale.y > cav.y && whale.y < cav.y + cav.height) {
+                        if (!cav.echoScored) {
+                            cav.echoScored = true;
+                            whale.energy = Math.min(100, whale.energy + 25);
+                            whale.podTrust = Math.min(100, whale.podTrust + 10);
+                            document.getElementById('val-trust').innerText = whale.podTrust + '%';
+                            document.getElementById('fill-trust').style.width = whale.podTrust + '%';
+                            updateHighScores(whale.podTrust, cavernsExploredCount, survivalTimeSeconds, whale.squidEaten);
+                            if (audioEngine && !audioMuted) {
+                                audioEngine.playCoda({ clan: 'caribbean', codaIndex: 3 });
+                            }
+                        }
+                    }
+                    
+                    // Left wall
+                    if (whale.x + 40 > cav.x && whale.x - 40 < cav.x + wallThick && whale.y > cav.y && whale.y < cav.y + cav.height) {
+                        if (whale.vx > 0) { whale.x = cav.x - 40; whale.vx *= -0.5; }
+                        else { whale.x = cav.x + wallThick + 40; whale.vx *= -0.5; }
+                    }
+                    // Right wall
+                    if (whale.x + 40 > cav.x + cav.width - wallThick && whale.x - 40 < cav.x + cav.width && whale.y > cav.y && whale.y < cav.y + cav.height) {
+                        if (whale.vx < 0) { whale.x = cav.x + cav.width + 40; whale.vx *= -0.5; }
+                        else { whale.x = cav.x + cav.width - wallThick - 40; whale.vx *= -0.5; }
+                    }
+                    // Top wall
+                    if (whale.x > cav.x && whale.x < cav.x + cav.width && whale.y + 40 > cav.y && whale.y - 40 < cav.y + wallThick) {
+                        const inGap = cav.entryDir === 'top' && whale.x > cav.x + cav.entryOffset && whale.x < cav.x + cav.entryOffset + cav.entrySize;
+                        if (!inGap) {
+                            if (whale.vy > 0) { whale.y = cav.y - 40; whale.vy *= -0.5; }
+                            else { whale.y = cav.y + wallThick + 40; whale.vy *= -0.5; }
+                        }
+                    }
+                    // Bottom wall
+                    if (whale.x > cav.x && whale.x < cav.x + cav.width && whale.y + 40 > cav.y + cav.height - wallThick && whale.y - 40 < cav.y + cav.height) {
+                        const inGap = cav.entryDir === 'bottom' && whale.x > cav.x + cav.entryOffset && whale.x < cav.x + cav.entryOffset + cav.entrySize;
+                        if (!inGap) {
+                            if (whale.vy < 0) { whale.y = cav.y + cav.height + 40; whale.vy *= -0.5; }
+                            else { whale.y = cav.y + cav.height - wallThick - 40; whale.vy *= -0.5; }
+                        }
+                    }
+                }
+
+                if (cav.illuminated > 0.01) {
+                    ctx.save();
+                    ctx.strokeStyle = `rgba(56, 189, 248, ${cav.illuminated * 0.8})`;
+                    ctx.fillStyle = `rgba(0, 30, 60, ${cav.illuminated * 0.4})`;
+                    ctx.lineWidth = 2;
+                    
+                    ctx.beginPath();
+                    // Draw outer rect with a gap
+                    ctx.moveTo(cav.x, cav.y);
+                    if (cav.entryDir === 'top') {
+                        ctx.lineTo(cav.x + cav.entryOffset, cav.y);
+                        ctx.moveTo(cav.x + cav.entryOffset + cav.entrySize, cav.y);
+                    }
+                    ctx.lineTo(cav.x + cav.width, cav.y);
+                    ctx.lineTo(cav.x + cav.width, cav.y + cav.height);
+                    if (cav.entryDir === 'bottom') {
+                        ctx.lineTo(cav.x + cav.entryOffset + cav.entrySize, cav.y + cav.height);
+                        ctx.moveTo(cav.x + cav.entryOffset, cav.y + cav.height);
+                    }
+                    ctx.lineTo(cav.x, cav.y + cav.height);
+                    ctx.lineTo(cav.x, cav.y);
+                    
+                    ctx.fill(); ctx.stroke();
+
+                    ctx.fillStyle = `rgba(0, 255, 204, ${cav.illuminated})`;
+                    ctx.font = '12px monospace';
+                    ctx.fillText(`🕳️ ${cav.name} (${Math.round(cav.y)}m)`, cav.x + 16, cav.y + 28);
+                    ctx.restore();
+                }
+            });
+
+            // Terrain Features (Seamounts with Wireframe Echo Contours)
+            terrain.forEach(tr => {
+                if (gameState === 'PLAYING') {
+                    // Ambient baseline proximity visibility so ocean is never pitch black void
+                    const distToWhale = Math.hypot(tr.x - whale.x, tr.y - whale.y);
+                    const proximityVis = Math.max(0, 1 - distToWhale / 700) * 0.45;
+                    tr.visibility = Math.max(tr.visibility * 0.98, proximityVis);
+
+                    pulses.forEach(p => {
+                        const dist = Math.hypot(tr.x - p.x, tr.y - p.y);
+                        if (Math.abs(dist - p.radius) < 75) tr.visibility = 1.0;
+                    });
+                }
+                if (tr.visibility > 0.01) {
+                    ctx.beginPath(); ctx.arc(tr.x, tr.y, tr.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(0, 255, 204, ${tr.visibility * 0.18})`; ctx.fill();
+                    ctx.strokeStyle = `rgba(0, 255, 204, ${tr.visibility * 0.7})`; ctx.lineWidth = 2; ctx.stroke();
+
+                    // Wireframe inner acoustic echo ripples
+                    ctx.beginPath(); ctx.arc(tr.x, tr.y, tr.radius * 0.6, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(56, 189, 248, ${tr.visibility * 0.4})`; ctx.stroke();
+                }
+            });
+
+            // AI Pod Whales (including Mother Elder)
+            podWhales.forEach(ai => {
+                if (gameState === 'PLAYING') {
+                    const distToWhale = Math.hypot(ai.x - whale.x, ai.y - whale.y);
+                    const proximityVis = Math.max(0, 1 - distToWhale / 800) * 0.65;
+                    ai.visibility = Math.max(ai.visibility * 0.98, proximityVis);
+                    ai.cooldown--;
+
+                    pulses.forEach(p => {
+                        const dist = Math.hypot(ai.x - p.x, ai.y - p.y);
+                        if (Math.abs(dist - p.radius) < 80) {
+                            ai.visibility = 1.0;
+                            if (ai.cooldown <= 0 && !activeDuet.targetKey) {
+                                ai.cooldown = 450;
+                                triggerPodDuet(ai);
+                            }
+                        }
+                    });
+
+                    if (ai.allied) {
+                        const targetX = whale.x - Math.cos(whale.angle) * 110 + (ai.id * 50 - 150);
+                        const targetY = whale.y - Math.sin(whale.angle) * 110;
+                        ai.vx += (targetX - ai.x) * 0.02;
+                        ai.vy += (targetY - ai.y) * 0.02;
+                        ai.angle = Math.atan2(whale.vy, whale.vx) || whale.angle;
+                        ai.visibility = Math.max(ai.visibility, 0.6);
+
+                        if (Math.random() < 0.1) {
+                            bubbleRings.push({ x: ai.x, y: ai.y, radius: 10, maxRadius: 65, alpha: 0.8 });
+                        }
+
+                        if (distToWhale < 150 && ai.cooldown <= 0) {
+                            ai.cooldown = 300;
+                            whale.podTrust = Math.min(100, whale.podTrust + 5);
+                            document.getElementById('val-trust').innerText = whale.podTrust + '%';
+                            document.getElementById('fill-trust').style.width = whale.podTrust + '%';
+                            
+                            pulses.push({ x: ai.x, y: ai.y, radius: 0, maxRadius: 600, alpha: 0.8, speed: 12 });
+                            pulses.push({ x: whale.x, y: whale.y, radius: 0, maxRadius: 600, alpha: 0.8, speed: 12 });
+                            
+                            for (let r = 0; r < 3; r++) {
+                                setTimeout(() => {
+                                    refractionRings.push({ x: ai.x, y: ai.y, radius: 20, maxRadius: 200 + (r*40), alpha: 0.8 - (r*0.2), color: 'rgba(251, 191, 36,' });
+                                    refractionRings.push({ x: whale.x, y: whale.y, radius: 20, maxRadius: 200 + (r*40), alpha: 0.8 - (r*0.2), color: 'rgba(0, 255, 204,' });
+                                }, r * 200);
+                            }
+                            
+                            if (audioEngine && !audioMuted) {
+                                audioEngine.playCoda({ clan: ai.clan, codaIndex: 1 });
+                                setTimeout(() => { audioEngine.playCoda({ clan: 'caribbean', codaIndex: 1 }); }, 300);
+                            }
+                            updateHighScores(whale.podTrust, cavernsExploredCount, survivalTimeSeconds, whale.squidEaten);
+                        }
+                    } else {
+                        ai.x += ai.vx; ai.y += ai.vy;
+                        if (ai.x < 100 || ai.x > WORLD_WIDTH - 100) ai.vx *= -1;
+                        if (ai.y < 300 || ai.y > WORLD_HEIGHT - 300) ai.vy *= -1;
+                    }
+                }
+
+                if (ai.visibility > 0.01) {
+                    ctx.save();
+                    ctx.translate(ai.x, ai.y);
+                    ctx.rotate(ai.angle);
+                    
+                    ctx.beginPath(); ctx.moveTo(45, 0);
+                    ctx.quadraticCurveTo(0, -24, -60, -10);
+                    ctx.lineTo(-72, 0); ctx.lineTo(-60, 10);
+                    ctx.quadraticCurveTo(0, 24, 45, 0);
+                    ctx.fillStyle = ai.allied ? `rgba(251, 191, 36, ${ai.visibility})` : `rgba(56, 189, 248, ${ai.visibility})`;
+                    ctx.fill();
+
+                    // Echo silhouette wireframe
+                    ctx.strokeStyle = `rgba(0, 255, 204, ${ai.visibility * 0.8})`;
+                    ctx.lineWidth = 1.5; ctx.stroke();
+
+                    ctx.restore();
+                }
+            });
+
+            // Bubble-Nets
+            for (let i = bubbleRings.length - 1; i >= 0; i--) {
+                const b = bubbleRings[i];
+                if (gameState === 'PLAYING') {
+                    b.radius += 1.2; b.alpha *= 0.96;
+                }
+                if (b.alpha < 0.05) { bubbleRings.splice(i, 1); continue; }
+
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${b.alpha * 0.7})`;
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Giant Squid Prey
+            squid.forEach(s => {
+                if (!s.alive) return;
+                if (gameState === 'PLAYING') {
+                    s.visibility *= 0.97;
+                    s.x += s.vx; s.y += s.vy;
+
+                    bubbleRings.forEach(b => {
+                        const distToNet = Math.hypot(s.x - b.x, s.y - b.y);
+                        if (distToNet < b.radius) {
+                            s.trappedInNet = true;
+                            s.vx *= 0.85; s.vy *= 0.85;
+                        }
+                    });
+
+                    if (s.x < 100 || s.x > WORLD_WIDTH - 100) s.vx *= -1;
+                    if (s.y < 300 || s.y > WORLD_HEIGHT - 300) s.vy *= -1;
+
+                    pulses.forEach(p => {
+                        const dist = Math.hypot(s.x - p.x, s.y - p.y);
+                        if (Math.abs(dist - p.radius) < 75) {
+                            s.visibility = 1.0;
+                            s.vx += (s.x - p.x) * 0.015;
+                            s.vy += (s.y - p.y) * 0.015;
+                        }
+                    });
+
+                    const whaleDist = Math.hypot(s.x - whale.x, s.y - whale.y);
+                    if (whaleDist < 60) {
+                        s.alive = false;
+                        whale.squidEaten++;
+                        const energyGain = s.trappedInNet ? 45 : 30;
+                        whale.energy = Math.min(100, whale.energy + energyGain);
+                        document.getElementById('val-squid').innerText = whale.squidEaten + ' / 5 (herded)';
+                        updateHighScores(whale.podTrust, cavernsExploredCount, survivalTimeSeconds, whale.squidEaten);
+                        checkVictoryConditions();
+                    }
+                }
+
+                if (s.visibility > 0.01) {
+                    ctx.beginPath(); ctx.arc(s.x, s.y, s.trappedInNet ? 12 : 9, 0, Math.PI * 2);
+                    ctx.fillStyle = s.trappedInNet ? `rgba(255, 215, 0, ${s.visibility})` : `rgba(255, 10, 100, ${s.visibility})`;
+                    ctx.fill();
+                    ctx.strokeStyle = `rgba(255, 100, 150, ${s.visibility})`; ctx.stroke();
+                }
+            });
+
+            // Lanternfish Swarms
+            lanternfish.forEach(lf => {
+                if (!lf.alive) return;
+                if (gameState === 'PLAYING') {
+                    lf.glowPhase += 0.08;
+                    lf.visibility *= 0.98;
+                    lf.x += lf.vx; lf.y += lf.vy;
+
+                    if (lf.x < 100 || lf.x > WORLD_WIDTH - 100) lf.vx *= -1;
+                    if (lf.y < 200 || lf.y > WORLD_HEIGHT - 200) lf.vy *= -1;
+
+                    pulses.forEach(p => {
+                        const dist = Math.hypot(lf.x - p.x, lf.y - p.y);
+                        if (Math.abs(dist - p.radius) < 75) lf.visibility = 1.0;
+                    });
+
+                    const distToWhale = Math.hypot(lf.x - whale.x, lf.y - whale.y);
+                    if (distToWhale < 50) {
+                        lf.alive = false;
+                        whale.fishEaten++;
+                        whale.energy = Math.min(100, whale.energy + 10);
+                        document.getElementById('val-fish').innerText = whale.fishEaten;
+                    }
+                }
+
+                if (lf.visibility > 0.01) {
+                    const glowAlpha = Math.max(0.1, 0.4 + Math.sin(lf.glowPhase) * 0.4);
+                    ctx.beginPath();
+                    ctx.arc(lf.x, lf.y, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(0, 255, 204, ${lf.visibility * glowAlpha})`;
+                    ctx.fill();
+                }
+            });
+
+            // Apex Predators (Sharks)
+            apexPredators.forEach(ap => {
+                if (!ap.alive) return;
+                if (gameState === 'PLAYING') {
+                    ap.visibility *= 0.98;
+                    if (ap.stunTimer > 0) {
+                        ap.stunTimer--;
+                    } else {
+                        const distToWhale = Math.hypot(whale.x - ap.x, whale.y - ap.y);
+                        if (distToWhale < 600) {
+                            ap.angle = Math.atan2(whale.y - ap.y, whale.x - ap.x);
+                            ap.vx = Math.cos(ap.angle) * 1.6;
+                            ap.vy = Math.sin(ap.angle) * 1.6;
+                            ap.visibility = Math.max(ap.visibility, 0.5);
+                        } else {
+                            ap.x += ap.vx; ap.y += ap.vy;
+                            if (ap.x < 100 || ap.x > WORLD_WIDTH - 100) ap.vx *= -1;
+                            if (ap.y < 1500 || ap.y > WORLD_HEIGHT - 200) ap.vy *= -1;
+                        }
+
+                        if (distToWhale < 60) {
+                            whale.energy = Math.max(0, whale.energy - 0.4);
+                            if (audioEngine && !audioMuted && Math.random() < 0.1) {
+                                audioEngine.playImpactClick(0.8, 'apex');
+                            }
+                        }
+                    }
+
+                    pulses.forEach(p => {
+                        const dist = Math.hypot(ap.x - p.x, ap.y - p.y);
+                        if (Math.abs(dist - p.radius) < 75) ap.visibility = 1.0;
+                    });
+                }
+
+                if (ap.visibility > 0.01) {
+                    ctx.save();
+                    ctx.translate(ap.x, ap.y);
+                    ctx.rotate(ap.angle);
+
+                    ctx.beginPath();
+                    ctx.moveTo(35, 0);
+                    ctx.lineTo(-35, -16);
+                    ctx.lineTo(-28, 0);
+                    ctx.lineTo(-35, 16);
+                    ctx.closePath();
+                    ctx.fillStyle = ap.stunTimer > 0 ? `rgba(0, 255, 255, ${ap.visibility})` : `rgba(239, 68, 68, ${ap.visibility})`;
+                    ctx.fill();
+
+                    // Apex outline echo
+                    ctx.strokeStyle = `rgba(255, 0, 80, ${ap.visibility * 0.8})`;
+                    ctx.lineWidth = 1.5; ctx.stroke();
+
+                    ctx.restore();
+                }
+            });
+
+            // Giant Architeuthis Boss
+            if (architeuthisBoss && architeuthisBoss.alive) {
+                const b = architeuthisBoss;
+                if (gameState === 'PLAYING') {
+                    b.visibility *= 0.985;
+                    b.tentaclePhase += 0.04;
+
+                    if (b.stunTimer > 0) {
+                        b.stunTimer--;
+                    } else if (whale.depth > 2200) {
+                        b.angle = Math.atan2(whale.y - b.y, whale.x - b.x);
+                        b.vx = Math.cos(b.angle) * 1.1;
+                        b.vy = Math.sin(b.angle) * 1.1;
+                        b.x += b.vx; b.y += b.vy;
+                        b.visibility = Math.max(b.visibility, 0.7);
+
+                        const distToWhale = Math.hypot(whale.x - b.x, whale.y - b.y);
+                        if (distToWhale < 95) {
+                            whale.energy = Math.max(0, whale.energy - 0.6);
+                        }
+                    }
+
+                    pulses.forEach(p => {
+                        const dist = Math.hypot(b.x - p.x, b.y - p.y);
+                        if (Math.abs(dist - p.radius) < 100) b.visibility = 1.0;
+                    });
+                }
+
+                if (b.visibility > 0.01) {
+                    ctx.save();
+                    ctx.translate(b.x, b.y);
+                    ctx.rotate(b.angle);
+
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 50, 30, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = b.stunTimer > 0 ? `rgba(0, 255, 255, ${b.visibility})` : `rgba(168, 85, 247, ${b.visibility})`;
+                    ctx.fill();
+
+                    for (let t = 0; t < 8; t++) {
+                        ctx.beginPath();
+                        ctx.moveTo(35, (t - 3.5) * 7);
+                        const wave = Math.sin(b.tentaclePhase + t) * 22;
+                        ctx.quadraticCurveTo(80, (t - 3.5) * 10 + wave, 130, (t - 3.5) * 14);
+                        ctx.strokeStyle = `rgba(192, 132, 252, ${b.visibility})`;
+                        ctx.lineWidth = 4;
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                }
+            }
+
+            // Thermoclines
+            thermoclines.forEach(tc => {
+                ctx.save();
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.06)';
+                ctx.fillRect(0, tc.y - 20, WORLD_WIDTH, 40);
+                ctx.restore();
+
+                if (gameState === 'PLAYING' && Math.abs(whale.y - tc.y) < 35) {
+                    whale.vx += tc.speed * 0.1;
+                }
+            });
+
+            // Echo Glyphs
+            echoGlyphs.forEach(g => {
+                if (gameState === 'PLAYING') {
+                    g.visibility *= 0.98;
+                    pulses.forEach(p => {
+                        const dist = Math.hypot(g.x - p.x, g.y - p.y);
+                        if (Math.abs(dist - p.radius) < 75) {
+                            g.visibility = 1.0;
+                            if (!g.activated) {
+                                g.activated = true;
+                                whale.podTrust = Math.min(100, whale.podTrust + 10);
+                                whale.energy = Math.min(100, whale.energy + 20);
+                                document.getElementById('val-trust').innerText = whale.podTrust + '%';
+                                document.getElementById('fill-trust').style.width = whale.podTrust + '%';
+                                if (audioEngine && !audioMuted) audioEngine.playCoda({ clan: 'pacific_plus_one', codaIndex: 1 });
+                                updateHighScores(whale.podTrust, cavernsExploredCount, survivalTimeSeconds, whale.squidEaten);
+                            }
+                        }
+                    });
+                }
+
+                if (g.visibility > 0.01) {
+                    ctx.save();
+                    ctx.font = '24px sans-serif';
+                    ctx.fillStyle = `rgba(251, 191, 36, ${g.visibility})`;
+                    ctx.fillText(g.symbol, g.x - 12, g.y + 8);
+                    ctx.restore();
+                }
+            });
+
+            // Sonar Pulses
+            for (let i = pulses.length - 1; i >= 0; i--) {
+                const p = pulses[i];
+                if (gameState === 'PLAYING') {
+                    p.radius += p.speed || 11;
+                    p.alpha = 1 - (p.radius / p.maxRadius);
+                }
+                if (p.radius >= p.maxRadius) { pulses.splice(i, 1); continue; }
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(0, 255, 204, ${p.alpha})`;
+                ctx.lineWidth = 2.5; ctx.stroke();
+            }
+
+            // Render Player Leviathan Whale (Massive Scale 110px length)
+            ctx.save();
+            ctx.translate(whale.x, whale.y);
+            ctx.rotate(whale.angle);
+
+            ctx.beginPath(); ctx.moveTo(55, 0);
+            ctx.quadraticCurveTo(0, -28, -75, -12);
+            ctx.lineTo(-90, 0); ctx.lineTo(-75, 12);
+            ctx.quadraticCurveTo(0, 28, 55, 0);
+            ctx.fillStyle = '#00ffcc'; ctx.fill();
+            ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.stroke();
+
+            // Pectoral Fins
+            ctx.beginPath(); ctx.moveTo(10, -24); ctx.lineTo(-15, -42); ctx.lineTo(-10, -22); ctx.fillStyle = '#00ccaa'; ctx.fill();
+            ctx.beginPath(); ctx.moveTo(10, 24); ctx.lineTo(-15, 42); ctx.lineTo(-10, 22); ctx.fillStyle = '#00ccaa'; ctx.fill();
+
+            // Fluke / Tail Animation
+            ctx.beginPath(); ctx.moveTo(-90, 0);
+            ctx.lineTo(-115, -24 + Math.sin(whale.tailPhase) * 18);
+            ctx.lineTo(-102, 0);
+            ctx.lineTo(-115, 24 + Math.sin(whale.tailPhase) * 18);
+            ctx.closePath(); ctx.fillStyle = '#38bdf8'; ctx.fill();
+
+            // Ping charging visual
+            if (whale.isChargingPing) {
+                whale.pingCharge++;
+                const chargeRatio = Math.min(whale.pingCharge / 60, 1.0);
+                ctx.beginPath();
+                ctx.arc(30, 0, 10 + chargeRatio * 15, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 255, 204, ${0.2 + chargeRatio * 0.5})`;
+                ctx.fill();
+                ctx.strokeStyle = `rgba(255, 255, 255, ${chargeRatio})`;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            ctx.restore();
+
+            // Restore Camera Transform Matrix
+            ctx.restore();
+
+            // Render HUD Acoustic Radar Scope
+            drawRadar();
+
+            requestAnimationFrame(animate);
+        }
+
+        // Radar Scope Renderer
+        const radarCanvas = document.getElementById('radar-canvas');
+        const rCtx = radarCanvas.getContext('2d');
+
+        function drawRadar() {
+            if (!rCtx) return;
+            const rw = radarCanvas.width;
+            const rh = radarCanvas.height;
+            const cx = rw / 2;
+            const cy = rh / 2;
+            const radarRange = 1600; // Radar range radius in world units
+            const scale = (cx - 4) / radarRange;
+
+            rCtx.fillStyle = 'rgba(0, 10, 25, 0.95)';
+            rCtx.fillRect(0, 0, rw, rh);
+
+            // Radar rings
+            rCtx.strokeStyle = 'rgba(0, 255, 204, 0.25)';
+            rCtx.lineWidth = 1;
+            rCtx.beginPath(); rCtx.arc(cx, cy, cx * 0.4, 0, Math.PI * 2); rCtx.stroke();
+            rCtx.beginPath(); rCtx.arc(cx, cy, cx * 0.8, 0, Math.PI * 2); rCtx.stroke();
+
+            // Sweep line
+            const sweepAngle = (Date.now() / 400) % (Math.PI * 2);
+            rCtx.beginPath();
+            rCtx.moveTo(cx, cy);
+            rCtx.lineTo(cx + Math.cos(sweepAngle) * cx, cy + Math.sin(sweepAngle) * cy);
+            rCtx.strokeStyle = 'rgba(0, 255, 204, 0.4)';
+            rCtx.stroke();
+
+            // Player Blip (always centered on radar)
+            rCtx.fillStyle = '#00ffcc';
+            rCtx.beginPath(); rCtx.arc(cx, cy, 3.5, 0, Math.PI * 2); rCtx.fill();
+
+            // Pod Whales Blips
+            podWhales.forEach(w => {
+                const dx = w.x - whale.x;
+                const dy = w.y - whale.y;
+                if (Math.hypot(dx, dy) < radarRange && w.visibility > 0.05) {
+                    rCtx.fillStyle = w.allied ? '#fbbf24' : '#38bdf8';
+                    rCtx.beginPath();
+                    rCtx.arc(cx + dx * scale, cy + dy * scale, 3, 0, Math.PI * 2);
+                    rCtx.fill();
+                }
+            });
+
+            // Squid Blips
+            squid.forEach(s => {
+                const dx = s.x - whale.x;
+                const dy = s.y - whale.y;
+                if (s.alive && Math.hypot(dx, dy) < radarRange && s.visibility > 0.05) {
+                    rCtx.fillStyle = s.trappedInNet ? '#eab308' : '#ef4444';
+                    rCtx.beginPath();
+                    rCtx.arc(cx + dx * scale, cy + dy * scale, 2.5, 0, Math.PI * 2);
+                    rCtx.fill();
+                }
+            });
+
+            // Cavern Blips
+            caverns.forEach(c => {
+                const dx = (c.x + c.width/2) - whale.x;
+                const dy = (c.y + c.height/2) - whale.y;
+                if (Math.hypot(dx, dy) < radarRange && c.illuminated > 0.05) {
+                    rCtx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+                    rCtx.fillRect(cx + dx * scale - 4, cy + dy * scale - 3, 8, 6);
+                }
+            });
+
+            // Apex Predator Blips
+            apexPredators.forEach(ap => {
+                const dx = ap.x - whale.x;
+                const dy = ap.y - whale.y;
+                if (ap.alive && Math.hypot(dx, dy) < radarRange && ap.visibility > 0.05) {
+                    rCtx.fillStyle = ap.stunTimer > 0 ? '#00ffff' : '#ef4444';
+                    rCtx.beginPath();
+                    rCtx.arc(cx + dx * scale, cy + dy * scale, 3.5, 0, Math.PI * 2);
+                    rCtx.fill();
+                }
+            });
+        }
+
+        // Start animation loop
+        animate();
+    </script>
+</body>
+</html>
